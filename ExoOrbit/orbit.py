@@ -132,6 +132,37 @@ class Orbit:
         d = self.distance(t)
         return d * np.sin(theta)
 
+    def position_3D(self, t):
+        """Calculate the 3D position of the planet
+
+        the coordinate system is centered in the star, x is towards the observer, z is "north", and y to the "right"
+
+          z ^
+            |
+            | -¤-
+            |̣_____>
+            /      y
+           / x
+
+        Parameters:
+        ----------
+        phase : {float, np.ndarray}
+            phase in radians
+        Returns
+        -------
+        x, y, z: {float, np.ndarray}
+            position in stellar radii
+        """
+
+        #TODO avoid duplicate calculation
+        phase = self.phase_angle(t)
+        r = self.projected_radius(t)
+        i = self.i
+        x = -r * np.cos(phase) * np.sin(i)
+        y = -r * np.sin(phase)
+        z = -r * np.cos(phase) * np.cos(i)
+        return x, y, z
+
     def mu(self, t):
         r = self.projected_radius(t) / self.r_s
         tmp = 1 - r ** 2
@@ -264,16 +295,47 @@ class Orbit:
         return 4 * rv / c
 
     def radial_velocity_planet(self, t):
+        """Radial velocity of the planet
+
+        Parameters
+        ----------
+        t : float, array
+            times to evaluate in mjd
+
+        Returns
+        -------
+        rv : float
+            radial velocity in m/s
+        """
         K = self.radial_velocity_semiamplitude_planet()
         f = self.true_anomaly(t)
         return self.v_s + K * (np.cos(self.w + f) + self.e * np.cos(self.w))
 
     def radial_velocity_star(self, t):
+        """Radial velocity of the star
+
+        Parameters
+        ----------
+        t : float, array
+            times to evaluate in mjd
+
+        Returns
+        -------
+        rv : float
+            radial velocity in m/s
+        """
         K = self.radial_velocity_semiamplitude()
         f = self.true_anomaly(t)
         return self.v_s + K * (np.cos(self.w + f) + self.e * np.cos(self.w))
 
     def radial_velocity_semiamplitude(self):
+        """Radial velocity semiamplitude of the star
+
+        Returns
+        -------
+        K : float
+            radial velocity semiamplitude in m/s
+        """
         return (
             28.4329
             / np.sqrt(1 - self.e ** 2)
@@ -285,6 +347,13 @@ class Orbit:
         )
 
     def radial_velocity_semiamplitude_planet(self):
+        """Radial velocity semiamplitude of the planet
+
+        Returns
+        -------
+        K : float
+            radial velocity semiamplitude in m/s
+        """
         return (
             28.4329
             / np.sqrt(1 - self.e ** 2)
