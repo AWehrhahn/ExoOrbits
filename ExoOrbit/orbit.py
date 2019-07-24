@@ -10,6 +10,7 @@ m_sol = const.M_sun.to("kg").value
 
 # based on http://sredfield.web.wesleyan.edu/jesse_tarnas_thesis_final.pdf
 
+
 class Orbit:
     def __init__(self, a, p, e, i, w, r_s, m_s, t_s, r_p, m_p, t0=0):
         """Calculates the orbit of an exoplanet
@@ -55,7 +56,6 @@ class Orbit:
 
         self.albedo = 1
 
-    
     @property
     def e(self):
         return self._e
@@ -79,7 +79,9 @@ class Orbit:
 
     def true_anomaly(self, t):
         e = self.e
-        f = 2 * np.arctan(np.sqrt((1+e)/(1-e)) * np.tan(self.eccentric_anomaly(t)/2))
+        f = 2 * np.arctan(
+            np.sqrt((1 + e) / (1 - e)) * np.tan(self.eccentric_anomaly(t) / 2)
+        )
         return f
 
     def eccentric_anomaly(self, t):
@@ -92,7 +94,7 @@ class Orbit:
         while np.any(np.abs(en - e) > tolerance):
             e = en
             en = m + self.e * e
-        
+
         return en
 
     def distance(self, t):
@@ -102,16 +104,16 @@ class Orbit:
         """The phase angle describes the angle between
         the vector of observer’s line-of-sight and the
         vector from star to planet
-        
+
         Parameters
         ----------
         t : float, array
             observation times in jd
-        
+
         Returns
         -------
-        [type]
-            [description]
+        phase_angle : float
+            phase angle in radians
         """
         return np.arccos(np.sin(self.w + self.true_anomaly(t)) * np.sin(self.i))
 
@@ -122,7 +124,7 @@ class Orbit:
 
     def mu(self, t):
         r = self.projected_radius(t) / self.r_s
-        tmp = 1-r**2
+        tmp = 1 - r ** 2
         mu = np.full_like(r, -1)
         np.sqrt(tmp, where=tmp >= 0, out=mu)
         return mu
@@ -130,7 +132,7 @@ class Orbit:
     def first_contact(self):
         r = self.r_s + self.r_p
         func = lambda t: self.projected_radius(t) - r
-        
+
         t0 = self.time_primary_transit() - self.p / 8
         res = fsolve(func, t0)
         res = res % self.p
@@ -145,7 +147,7 @@ class Orbit:
     def fourth_contact(self):
         r = self.r_s + self.r_p
         func = lambda t: self.projected_radius(t) - r
-        
+
         t0 = self.time_primary_transit() + self.p / 8
         res = fsolve(func, t0)
         res = res % self.p
@@ -157,47 +159,91 @@ class Orbit:
 
         depth = np.empty_like(t)
         depth[1 + k > z] = 0
-        depth[z <= 1 - k] = k**2
+        depth[z <= 1 - k] = k ** 2
         depth[z < -1] = 1
 
-        mask = (abs(1-k) < z) & (z <= 1 + k)
+        mask = (abs(1 - k) < z) & (z <= 1 + k)
         if np.any(mask):
             z = z[mask]
-            kappa1 = np.arccos((1 - k**2 + z**2)/(2 * z))
-            kappa0 = np.arccos((k**2 + z**2 - 1)/(2*k*z))
-            depth[mask] = 1/pi * (k**2 * kappa0 + kappa1 - np.sqrt((4*z**2 - (1 + z**2 - k**2)**2)/4)) 
+            kappa1 = np.arccos((1 - k ** 2 + z ** 2) / (2 * z))
+            kappa0 = np.arccos((k ** 2 + z ** 2 - 1) / (2 * k * z))
+            depth[mask] = (
+                1
+                / pi
+                * (
+                    k ** 2 * kappa0
+                    + kappa1
+                    - np.sqrt((4 * z ** 2 - (1 + z ** 2 - k ** 2) ** 2) / 4)
+                )
+            )
 
         return depth
 
     def impact_parameter(self):
-        return self.a * np.cos(self.i) / self.r_s * (1 - self.e**2)/(1 + self.e * np.sin(self.w))
+        return (
+            self.a
+            * np.cos(self.i)
+            / self.r_s
+            * (1 - self.e ** 2)
+            / (1 + self.e * np.sin(self.w))
+        )
 
     def transit_time_total_circular(self):
         b = self.impact_parameter()
-        return self.p / pi * np.arcsin(self.r_s / self.a * np.sqrt((1 + self.k)**2 - b**2) / np.sin(self.i))
+        return (
+            self.p
+            / pi
+            * np.arcsin(
+                self.r_s / self.a * np.sqrt((1 + self.k) ** 2 - b ** 2) / np.sin(self.i)
+            )
+        )
 
     def transit_time_full_circular(self):
         b = self.impact_parameter()
-        return self.p / pi * np.arcsin(self.r_s / self.a * np.sqrt((1 - self.k)**2 - b**2) / np.sin(self.i))
+        return (
+            self.p
+            / pi
+            * np.arcsin(
+                self.r_s / self.a * np.sqrt((1 - self.k) ** 2 - b ** 2) / np.sin(self.i)
+            )
+        )
 
     def time_primary_transit(self):
         return self.p * (1 + 4 * self.e * np.cos(self.w))
 
     def time_secondary_eclipse(self):
         return self.p / 2 * (1 + 4 * self.e * np.cos(self.w))
-    
+
     def impact_parameter_secondary_eclipse(self):
-        return self.a * np.cos(self.i)/ self.r_s * (1 - self.e**2)/(1 - self.e * np.sin(self.w))
+        return (
+            self.a
+            * np.cos(self.i)
+            / self.r_s
+            * (1 - self.e ** 2)
+            / (1 - self.e * np.sin(self.w))
+        )
 
     def reflected_light_fraction(self, t):
-        return self.albedo / 2 * self.r_p**2 / self.distance(t)**2  * (1 + np.cos(self.phase_angle(t)))
+        return (
+            self.albedo
+            / 2
+            * self.r_p ** 2
+            / self.distance(t) ** 2
+            * (1 + np.cos(self.phase_angle(t)))
+        )
 
     def gravity_darkening_coefficient(self):
-        return np.log10(G * self.m_s / self.r_s**2) / np.log10(self.t_s)
+        return np.log10(G * self.m_s / self.r_s ** 2) / np.log10(self.t_s)
 
     def ellipsoid_variation_flux_fraction(self, t):
         beta = self.gravity_darkening_coefficient()
-        return beta * self.m_p / self.m_s * (self.r_s / self.distance(t))**3 * (np.cos(self.w + self.true_anomaly(t)) * np.cos(self.i))**2
+        return (
+            beta
+            * self.m_p
+            / self.m_s
+            * (self.r_s / self.distance(t)) ** 3
+            * (np.cos(self.w + self.true_anomaly(t)) * np.cos(self.i)) ** 2
+        )
 
     def doppler_beaming_flux_fraction(self, t):
         rv = self.radial_velocity_star(t)
@@ -214,4 +260,13 @@ class Orbit:
         return self.v_s + K * (np.cos(self.w + f) + self.e * np.cos(self.w))
 
     def radial_velocity_semiamplitude(self):
-        return 28.4329 / np.sqrt(1 - self.e**2) * self.m_p * np.sin(self.i) / m_jup * ((self.m_s + self.m_p) / m_sol)**(-2/3) * (self.p / 365.25)**(-1/3)
+        return (
+            28.4329
+            / np.sqrt(1 - self.e ** 2)
+            * self.m_p
+            * np.sin(self.i)
+            / m_jup
+            * ((self.m_s + self.m_p) / m_sol) ** (-2 / 3)
+            * (self.p / 365.25) ** (-1 / 3)
+        )
+
