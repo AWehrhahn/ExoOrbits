@@ -1,9 +1,6 @@
 import pytest
 import numpy as np
 
-import matplotlib.pyplot as plt
-
-
 @pytest.fixture
 def times(planet):
     t0 = planet.time_of_transit
