@@ -149,8 +149,8 @@ class Orbit:
         phase_angle : float
             phase angle in radians
         """
-        k = ((t - self.t0) / self.p) % 1
-        k = np.where(k >= 0.5, 1, -1)
+        k = ((t - self.t0) % self.p) / self.p
+        k = np.where(k < 0.5, 1, -1)
         f = self.true_anomaly(t)
         theta = np.arccos(np.sin(self.w + f) * np.sin(self.i))
         return k * theta
