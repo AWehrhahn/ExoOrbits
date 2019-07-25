@@ -31,7 +31,7 @@ if __name__ == "__main__":
     print(t1)
     print(t4)
 
-    y = rv
+    y = p
     plt.plot(t, y)
 
     # plt.hlines(r_s + r_p, 0, p, colors="r")

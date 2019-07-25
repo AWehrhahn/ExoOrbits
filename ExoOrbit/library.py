@@ -13,7 +13,7 @@ Earth = Planet(
     1 * u.year,
     0.016,
     90 * u.deg,
-    102.9 * u.deg,
+    90 * u.deg,
     0,
     name="Earth",
 )
@@ -30,6 +30,6 @@ GJ1214_b = Planet(
     0,
     90 * u.deg,
     90 * u.deg,
-    2454980.748796,
+    54980.248796,
     name="GJ1214 b",
 )

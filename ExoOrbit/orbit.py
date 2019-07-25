@@ -84,15 +84,22 @@ class Orbit:
     def z(self, t):
         return self.projected_radius(t) / self.r_s
 
+    def periapsis_distance(self):
+        """Closest distance in the orbit"""
+        return (1 - self.e) * self.a
+
+    def apoapsis_distance(self):
+        """Furthest distance in the orbit"""
+        return (1 + self.e) * self.a
+
     def mean_anomaly(self, t):
-        m = self.t0 + 2 * pi * t / self.p
+        m = 2 * pi * (t - self.t0) / self.p
         return m
 
     def true_anomaly(self, t):
-        e = self.e
-        f = 2 * np.arctan(
-            np.sqrt((1 + e) / (1 - e)) * np.tan(self.eccentric_anomaly(t) / 2)
-        )
+        root = np.sqrt((1 + self.e) / (1 - self.e))
+        ea = self.eccentric_anomaly(t)
+        f = 2 * np.arctan(root * np.tan(ea / 2))
         return f
 
     def eccentric_anomaly(self, t):
@@ -104,7 +111,9 @@ class Orbit:
         en = 10 * tolerance
         while np.any(np.abs(en - e) > tolerance):
             e = en
-            en = m + self.e * e
+            en = m + self.e * np.sin(e)
+
+        en = np.clip(en, -np.pi, np.pi)
         return en
 
     def distance(self, t):
@@ -114,6 +123,8 @@ class Orbit:
         """The phase angle describes the angle between
         the vector of observer’s line-of-sight and the
         vector from star to planet
+
+        TODO: angle should be negative if the time is before the transit center and positive afterwards
 
         Parameters
         ----------
@@ -125,12 +136,17 @@ class Orbit:
         phase_angle : float
             phase angle in radians
         """
-        return np.arccos(np.sin(self.w + self.true_anomaly(t)) * np.sin(self.i))
+        k = ((t - self.t0) / self.p) % 1
+        k = np.where(k >= 0.5, 1, -1)
+        f = self.true_anomaly(t)
+        theta = np.arccos(np.sin(self.w + f) * np.sin(self.i))
+        return k * theta
 
     def projected_radius(self, t):
         theta = self.phase_angle(t)
         d = self.distance(t)
-        return d * np.sin(theta)
+        r = np.abs(d * np.sin(theta))
+        return r
 
     def position_3D(self, t):
         """Calculate the 3D position of the planet
@@ -146,17 +162,15 @@ class Orbit:
 
         Parameters:
         ----------
-        phase : {float, np.ndarray}
-            phase in radians
+        t : {float, np.ndarray}
+            time in jd
         Returns
         -------
         x, y, z: {float, np.ndarray}
             position in stellar radii
         """
-
-        #TODO avoid duplicate calculation
         phase = self.phase_angle(t)
-        r = self.projected_radius(t)
+        r = self.distance(t)
         i = self.i
         x = -r * np.cos(phase) * np.sin(i)
         y = -r * np.sin(phase)
@@ -164,10 +178,10 @@ class Orbit:
         return x, y, z
 
     def mu(self, t):
+        # mu = np.cos(self.phase_angle(t))
         r = self.projected_radius(t) / self.r_s
-        tmp = 1 - r ** 2
-        mu = np.full_like(r, -1)
-        np.sqrt(tmp, where=tmp >= 0, out=mu)
+        mu = np.full_like(r, -1.)
+        np.sqrt(1-r**2, where=r <= 1, out=mu)
         return mu
 
     def _find_contact(self, r, bounds):
@@ -250,10 +264,8 @@ class Orbit:
         )
 
     def time_primary_transit(self):
-        b = (-self.p/2, self.p/2)
+        b = (self.t0 - self.p / 4, self.t0 + self.p / 4)
         return self._find_contact(0, b)
-        t0 = self.p * (1 + 4 * self.e * np.cos(self.w))
-        return t0 % self.p
 
     def time_secondary_eclipse(self):
         return self.p / 2 * (1 + 4 * self.e * np.cos(self.w))
