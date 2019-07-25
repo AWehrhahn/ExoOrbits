@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/AWehrhahn/ExoOrbits.svg?branch=master)](https://travis-ci.org/AWehrhahn/ExoOrbits)
+
 ExoOrbits
 ---------
 
