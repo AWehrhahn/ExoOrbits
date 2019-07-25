@@ -114,7 +114,8 @@ class Orbit:
             e = en
             en = m + self.e * np.sin(e)
 
-        en = np.clip(en, -np.pi, np.pi)
+        en = ((en  + np.pi) % (2 * np.pi)) - np.pi
+        # en = np.clip(en, -np.pi, np.pi)
         return en
 
     def distance(self, t):
@@ -196,6 +197,7 @@ class Orbit:
         x, y, z: float, array
             position in stellar radii
         """
+        # TODO this is missing the argument of periapsis
         phase = self.phase_angle(t)
         r = self.distance(t)
         i = self.i

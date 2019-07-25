@@ -1,4 +1,5 @@
 from numpy import pi
+from scipy.constants import G
 from astropy.units import Quantity
 from astropy.time import Time
 

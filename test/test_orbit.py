@@ -46,6 +46,7 @@ def test_eccentric_anomaly(orbit, times, t0):
 
     ea = orbit.eccentric_anomaly(t0)
     assert isinstance(ea, (float, np.floating))
+    assert np.isclose(ea, 0)
 
 
 def test_distance(orbit, times, planet):
