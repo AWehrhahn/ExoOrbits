@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import fsolve, minimize_scalar
 from scipy.constants import G, c
 from astropy import constants as const
+from astropy import units as u
 
 pi = np.pi
 m_jup = const.M_jup.to("kg").value
@@ -117,14 +118,25 @@ class Orbit:
         return en
 
     def distance(self, t):
+        """Distance from the center of the star to the center of the planet
+
+        Parameters
+        ----------
+        t : float, array
+            time in mjd
+
+        Returns
+        -------
+        distance : float, array
+            distance in km
+        """
         return self.a * (1 - self.e * np.cos(self.eccentric_anomaly(t)))
 
     def phase_angle(self, t):
-        """The phase angle describes the angle between
+        """
+        The phase angle describes the angle between
         the vector of observer’s line-of-sight and the
         vector from star to planet
-
-        TODO: angle should be negative if the time is before the transit center and positive afterwards
 
         Parameters
         ----------
@@ -143,6 +155,20 @@ class Orbit:
         return k * theta
 
     def projected_radius(self, t):
+        """
+        Distance from the center of the star to the center of the planet,
+        i.e. distance projected on the stellar disk
+
+        Parameters
+        ----------
+        t : float, array
+            time in mjd
+
+        Returns
+        -------
+        r : float, array
+            distance in km
+        """
         theta = self.phase_angle(t)
         d = self.distance(t)
         r = np.abs(d * np.sin(theta))
@@ -162,11 +188,12 @@ class Orbit:
 
         Parameters:
         ----------
-        t : {float, np.ndarray}
-            time in jd
+        t : float, array
+            time in mjd
+
         Returns
         -------
-        x, y, z: {float, np.ndarray}
+        x, y, z: float, array
             position in stellar radii
         """
         phase = self.phase_angle(t)
@@ -181,7 +208,7 @@ class Orbit:
         # mu = np.cos(self.phase_angle(t))
         r = self.projected_radius(t) / self.r_s
         mu = np.full_like(r, -1.)
-        np.sqrt(1-r**2, where=r <= 1, out=mu)
+        np.sqrt(1 - r ** 2, where=r <= 1, out=mu)
         return mu
 
     def _find_contact(self, r, bounds):
@@ -193,24 +220,58 @@ class Orbit:
         return res
 
     def first_contact(self):
+        """
+        First contact is when the outer edge of the planet touches the stellar disk,
+        i.e. when the transit curve begins
+
+        Returns
+        -------
+        t1 : float
+            time in mjd
+        """
         t0 = self.time_primary_transit()
         r = self.r_s + self.r_p
         b = (t0 - self.p / 4, t0 - 1e-8)
         return self._find_contact(r, b)
 
     def second_contact(self):
+        """
+        Second contact is when the planet is completely in the stellar disk for the first time
+
+        Returns
+        -------
+        t2 : float
+            time in mjd
+        """
         t0 = self.time_primary_transit()
         r = self.r_s - self.r_p
         b = (t0 - self.p / 4, t0 - 1e-8)
         return self._find_contact(r, b)
 
     def third_contact(self):
+        """
+        Third contact is when the planet begins to leave the stellar disk,
+        but is still completely within the disk
+
+        Returns
+        -------
+        t3 : float
+            time in mjd
+        """
         t0 = self.time_primary_transit()
         r = self.r_s - self.r_p
         b = (t0 + 1e-8, t0 + self.p / 4)
         return self._find_contact(r, b)
 
     def fourth_contact(self):
+        """
+        Fourth contact is when the planet completely left the stellar disk
+
+        Returns
+        -------
+        t4 : float
+            time in mjd
+        """
         t0 = self.time_primary_transit()
         r = self.r_s + self.r_p
         b = (t0 + 1e-8, t0 + self.p / 4)
@@ -235,35 +296,66 @@ class Orbit:
         return depth
 
     def impact_parameter(self):
-        return (
-            self.a
-            * np.cos(self.i)
-            / self.r_s
-            * (1 - self.e ** 2)
-            / (1 + self.e * np.sin(self.w))
-        )
+        """
+        The impact parameter is the shortest projected distance during a transit,
+        i.e. how close the planet gets to the center of the star
+
+        This will be 0 if the inclination is 90 deg
+
+        Returns
+        -------
+        b : float
+            distance in km
+        """
+        d = self.a / self.r_s * np.cos(self.i)
+        e = (1 - self.e ** 2) / (1 + self.e * np.sin(self.w))
+        return d * e
 
     def transit_time_total_circular(self):
+        """
+        The total time spent in transit for a circular orbit,
+        i.e. if eccentricity where 0
+
+        This should be the same as first contact to fourth contact
+        There is only an analytical formula for the circular orbit, which is why this exists
+
+        Returns
+        -------
+        t : float
+            time in days
+        """
         b = self.impact_parameter()
-        return (
-            self.p
-            / pi
-            * np.arcsin(
-                self.r_s / self.a * np.sqrt((1 + self.k) ** 2 - b ** 2) / np.sin(self.i)
-            )
-        )
+        alpha = self.r_s / self.a * np.sqrt((1 + self.k) ** 2 - b ** 2) / np.sin(self.i)
+        return self.p / pi * np.arcsin(alpha)
 
     def transit_time_full_circular(self):
+        """
+        The total time spent in full transit for a circular orbit,
+        i.e. the time during which the planet is completely inside the stellar disk
+        if eccentricity where 0
+
+        This should be the same as second contact to third contact
+        There is only an analytical formula for the circular orbit, which is why this exists
+
+        Returns
+        -------
+        t : float
+            time in days
+        """
         b = self.impact_parameter()
-        return (
-            self.p
-            / pi
-            * np.arcsin(
-                self.r_s / self.a * np.sqrt((1 - self.k) ** 2 - b ** 2) / np.sin(self.i)
-            )
-        )
+        alpha = self.r_s / self.a * np.sqrt((1 - self.k) ** 2 - b ** 2) / np.sin(self.i)
+        return self.p / pi * np.arcsin(alpha)
 
     def time_primary_transit(self):
+        """
+        The time of the primary transit,
+        should be the same as t0
+
+        Returns
+        -------
+        time : float
+            time in mjd
+        """
         b = (self.t0 - self.p / 4, self.t0 + self.p / 4)
         return self._find_contact(0, b)
 
@@ -348,15 +440,10 @@ class Orbit:
         K : float
             radial velocity semiamplitude in m/s
         """
-        return (
-            28.4329
-            / np.sqrt(1 - self.e ** 2)
-            * self.m_p
-            * np.sin(self.i)
-            / m_jup
-            * ((self.m_s + self.m_p) / m_sol) ** (-2 / 3)
-            * (self.p / 365.25) ** (-1 / 3)
-        )
+        m = self.m_p / m_jup * ((self.m_s + self.m_p) / m_sol) ** (-2 / 3)
+        b = np.sin(self.i) / np.sqrt(1 - self.e ** 2)
+        t = (self.p / u.year.to(u.day)) ** (-1 / 3)
+        return 28.4329 * m * b * t
 
     def radial_velocity_semiamplitude_planet(self):
         """Radial velocity semiamplitude of the planet
@@ -366,13 +453,7 @@ class Orbit:
         K : float
             radial velocity semiamplitude in m/s
         """
-        return (
-            28.4329
-            / np.sqrt(1 - self.e ** 2)
-            * self.m_s
-            * np.sin(self.i)
-            / m_jup
-            * ((self.m_s + self.m_p) / m_sol) ** (-2 / 3)
-            * (self.p / 365.25) ** (-1 / 3)
-        )
-
+        m = self.m_s / m_jup * ((self.m_s + self.m_p) / m_sol) ** (-2 / 3)
+        b = np.sin(self.i) / np.sqrt(1 - self.e ** 2)
+        t = (self.p / u.year.to(u.day)) ** (-1 / 3)
+        return 28.4329 * m * b * t
