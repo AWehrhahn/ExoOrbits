@@ -16,7 +16,7 @@ m_sol = const.M_sun.to("kg").value
 
 # TODO: Perturbations by other planets
 # TODO: relativistic effects?
-# TODO: Cache intermediate results
+# TODO: Determine the speed of the cache, is it too slow?
 
 
 def cache(function):
@@ -136,7 +136,6 @@ class Orbit:
 
     @cache
     def eccentric_anomaly(self, t):
-        # TODO cache results
         tolerance = 1e-8
         m = self.mean_anomaly(t)
 
