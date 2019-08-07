@@ -3,9 +3,11 @@ from scipy.constants import G
 from astropy.units import Quantity
 from astropy.time import Time
 
+from .util import resets_cache
 
 class Body:
     def __init__(self, mass, radius, name="", **kwargs):
+        self._orbit = None
         self.mass = mass
         self.radius = radius
         self.name = name
@@ -17,6 +19,7 @@ class Body:
         return self._mass
 
     @mass.setter
+    @resets_cache
     def mass(self, value):
         if isinstance(value, Quantity):
             value = value.to("kg").value
@@ -27,6 +30,7 @@ class Body:
         return self._radius
 
     @radius.setter
+    @resets_cache
     def radius(self, value):
         if isinstance(value, Quantity):
             value = value.to("km").value
@@ -46,7 +50,27 @@ class Body:
 
 
 class Star(Body):
-    pass
+    def __init__(self, mass, radius, effective_temperature, name="", **kwargs):
+        super().__init__(mass, radius, name=name, **kwargs)
+        self.effective_temperature = effective_temperature
+
+    @property
+    def effective_temperature(self):
+        return self._effective_temperature
+
+    @property
+    def teff(self):
+        return self._effective_temperature
+
+    @effective_temperature.setter
+    @resets_cache
+    def effective_temperature(self, value):
+        if isinstance(value, Quantity):
+            value = value.to("K").value
+        if value < 0:
+            raise ValueError("Temperature must be above 0 Kelvin")
+        self._effective_temperature = value
+
 
 
 class Planet(Body):
@@ -80,6 +104,7 @@ class Planet(Body):
         return self._semi_major_axis
 
     @semi_major_axis.setter
+    @resets_cache
     def semi_major_axis(self, value):
         if isinstance(value, Quantity):
             value = value.to("km").value
@@ -94,6 +119,7 @@ class Planet(Body):
         return self._period
 
     @period.setter
+    @resets_cache
     def period(self, value):
         if isinstance(value, Quantity):
             value = value.to("day").value
@@ -108,6 +134,7 @@ class Planet(Body):
         return self._eccentricity
 
     @eccentricity.setter
+    @resets_cache
     def eccentricity(self, value):
         if isinstance(value, Quantity):
             value = value.to(1).value
@@ -124,6 +151,7 @@ class Planet(Body):
         return self._inclination
 
     @inclination.setter
+    @resets_cache
     def inclination(self, value):
         if isinstance(value, Quantity):
             value = value.to("rad").value
@@ -138,6 +166,7 @@ class Planet(Body):
         return self._argument_of_periastron
 
     @argument_of_periastron.setter
+    @resets_cache
     def argument_of_periastron(self, value):
         if isinstance(value, Quantity):
             value = value.to("rad").value
@@ -152,6 +181,7 @@ class Planet(Body):
         return self._time_of_transit
 
     @time_of_transit.setter
+    @resets_cache
     def time_of_transit(self, value):
         if isinstance(value, Time):
             value = value.mjd

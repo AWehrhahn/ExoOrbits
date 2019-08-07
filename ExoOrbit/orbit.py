@@ -1,10 +1,11 @@
-from functools import wraps, lru_cache
 
 import numpy as np
 from scipy.optimize import fsolve, minimize_scalar
 from scipy.constants import G, c
 from astropy import constants as const
 from astropy import units as u
+
+from .util import cache, hasCache
 
 pi = np.pi
 m_jup = const.M_jup.to("kg").value
@@ -17,36 +18,10 @@ m_sol = const.M_sun.to("kg").value
 # TODO: Perturbations by other planets
 # TODO: relativistic effects?
 # TODO: Determine the speed of the cache, is it too slow?
+# TODO: Empty cache when self.parameters change
 
 
-def cache(function):
-    # Switch order of array and self, because only the first argument is used for the cache
-    @lru_cache()
-    def cached_wrapper(hashable_array, self):
-        if hashable_array is not None:
-            array = np.array(hashable_array)
-            return function(self, array)
-        else:
-            return function(self)
-
-    @wraps(function)
-    def wrapper(self, array=None):
-        if isinstance(array, np.ndarray):
-            if array.ndim > 0:
-                return cached_wrapper(tuple(array), self)
-            else:
-                return cached_wrapper(float(array), self)
-        else:
-            return cached_wrapper(array, self)
-
-    # copy lru_cache attributes over too
-    wrapper.cache_info = cached_wrapper.cache_info
-    wrapper.cache_clear = cached_wrapper.cache_clear
-
-    return wrapper
-
-
-class Orbit:
+class Orbit(hasCache):
     def __init__(self, star, planet):
         """Calculates the orbit of an exoplanet
 
@@ -59,6 +34,8 @@ class Orbit:
         """
         self.star = star
         self.planet = planet
+        self.star._orbit = self
+        self.planet._orbit = self
 
         # TODO define these parameters
         self.v_s = 0
@@ -321,20 +298,25 @@ class Orbit:
 
     @cache
     def transit_depth(self, t):
+        # r / r_s
         z = self.z(t)
+        # r_p / r_s
         k = self.k
 
-        depth = np.full_like(t, 1)
-        depth[(1 + k) > z] = 0
+        depth = np.zeros(t.shape)
+
+        # Planet fully inside the stellar disk
         depth[z <= (1 - k)] = k ** 2
 
+        # Planet is entering or exiting the disk
         mask = (abs(1 - k) < z) & (z <= (1 + k))
         if np.any(mask):
             z = z[mask]
-            kappa1 = np.arccos((1 - k ** 2 + z ** 2) / (2 * z))
-            kappa0 = np.arccos((k ** 2 + z ** 2 - 1) / (2 * k * z))
-            root = np.sqrt((4 * z ** 2 - (1 + z ** 2 - k ** 2) ** 2) / 4)
-            depth[mask] = 1 / pi * (k ** 2 * kappa0 + kappa1 - root)
+            k2, z2 = k ** 2, z ** 2
+            kappa1 = np.arccos((1 - k2 + z2) / (2 * z))
+            kappa0 = np.arccos((k2 + z2 - 1) / (2 * k * z))
+            root = 0.5 * np.sqrt(4 * z2 - (1 - k2 + z2) ** 2)
+            depth[mask] = 1 / pi * (k2 * kappa0 + kappa1 - root)
 
         return depth
 
@@ -370,7 +352,8 @@ class Orbit:
             time in days
         """
         b = self.impact_parameter()
-        alpha = self.r_s / self.a * np.sqrt((1 + self.k) ** 2 - b ** 2) / np.sin(self.i)
+        alpha = self.r_s / self.a * \
+            np.sqrt((1 + self.k) ** 2 - b ** 2) / np.sin(self.i)
         return self.p / pi * np.arcsin(alpha)
 
     @cache
@@ -389,7 +372,8 @@ class Orbit:
             time in days
         """
         b = self.impact_parameter()
-        alpha = self.r_s / self.a * np.sqrt((1 - self.k) ** 2 - b ** 2) / np.sin(self.i)
+        alpha = self.r_s / self.a * \
+            np.sqrt((1 - self.k) ** 2 - b ** 2) / np.sin(self.i)
         return self.p / pi * np.arcsin(alpha)
 
     @cache
