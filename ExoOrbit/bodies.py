@@ -37,6 +37,14 @@ class Body:
         self._radius = value
 
     @property
+    def area(self):
+        return pi * self.radius**2
+
+    @property
+    def circumference(self):
+        return 2 * pi * self.radius
+
+    @property
     def gravity_value(self):
         return G * self.mass
 
