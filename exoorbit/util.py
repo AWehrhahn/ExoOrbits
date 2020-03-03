@@ -1,6 +1,8 @@
 from functools import wraps, lru_cache
 
 import numpy as np
+import astropy.units as u
+from astropy.time import Time
 
 class hasCache:
     """ Parent Class for Classes that use the cache property """ 
@@ -45,5 +47,14 @@ def resets_cache(function):
     def wrapper(self, value):
         if self._orbit is not None:
             self._orbit.cache_clear()
+        return function(self, value)
+    return wrapper
+
+def time(function):
+    """ Checks that the input value is an astropy Time """
+    @wraps(function)
+    def wrapper(self, value):
+        if not isinstance(value, Time):
+            raise TypeError("Value must be an astropy Time")
         return function(self, value)
     return wrapper

@@ -1,9 +1,9 @@
 from numpy import pi
 from scipy.constants import G
-from astropy.units import Quantity
+import astropy.units as u
 from astropy.time import Time
 
-from .util import resets_cache
+from .util import resets_cache, time
 
 class Body:
     def __init__(self, mass, radius, name="", **kwargs):
@@ -19,10 +19,9 @@ class Body:
         return self._mass
 
     @mass.setter
+    @u.quantity_input(value=u.kg)
     @resets_cache
     def mass(self, value):
-        if isinstance(value, Quantity):
-            value = value.to("kg").value
         self._mass = value
 
     @property
@@ -30,10 +29,9 @@ class Body:
         return self._radius
 
     @radius.setter
+    @u.quantity_input(value=u.km)
     @resets_cache
     def radius(self, value):
-        if isinstance(value, Quantity):
-            value = value.to("km").value
         self._radius = value
 
     @property
@@ -71,12 +69,9 @@ class Star(Body):
         return self._effective_temperature
 
     @effective_temperature.setter
+    @u.quantity_input(value=u.K)
     @resets_cache
     def effective_temperature(self, value):
-        if isinstance(value, Quantity):
-            value = value.to("K").value
-        if value < 0:
-            raise ValueError("Temperature must be above 0 Kelvin")
         self._effective_temperature = value
 
 
@@ -88,10 +83,10 @@ class Planet(Body):
         radius,
         semi_major_axis,
         period,
-        eccentricity=0,
-        inclination=pi / 2,
-        argument_of_periastron=pi / 2,
-        time_of_transit=0,
+        eccentricity=0 * u.one,
+        inclination=pi / 2 * u.deg,
+        argument_of_periastron=pi / 2 * u.deg,
+        time_of_transit=Time(0, format="mjd"),
         name="",
         **kwargs
     ):
@@ -112,10 +107,9 @@ class Planet(Body):
         return self._semi_major_axis
 
     @semi_major_axis.setter
+    @u.quantity_input(value=u.km)
     @resets_cache
     def semi_major_axis(self, value):
-        if isinstance(value, Quantity):
-            value = value.to("km").value
         self._semi_major_axis = value
 
     @property
@@ -127,10 +121,9 @@ class Planet(Body):
         return self._period
 
     @period.setter
+    @u.quantity_input(value=u.day)
     @resets_cache
     def period(self, value):
-        if isinstance(value, Quantity):
-            value = value.to("day").value
         self._period = value
 
     @property
@@ -142,11 +135,10 @@ class Planet(Body):
         return self._eccentricity
 
     @eccentricity.setter
+    @u.quantity_input(value=u.one)
     @resets_cache
     def eccentricity(self, value):
-        if isinstance(value, Quantity):
-            value = value.to(1).value
-        if value > 1 or value < 0:
+        if value > 1 * u.one or value < 0 * u.one:
             raise ValueError("Eccentricity must be between 0 and 1")
         self._eccentricity = value
 
@@ -159,10 +151,9 @@ class Planet(Body):
         return self._inclination
 
     @inclination.setter
+    @u.quantity_input(value=u.deg)
     @resets_cache
     def inclination(self, value):
-        if isinstance(value, Quantity):
-            value = value.to("rad").value
         self._inclination = value
 
     @property
@@ -174,10 +165,9 @@ class Planet(Body):
         return self._argument_of_periastron
 
     @argument_of_periastron.setter
+    @u.quantity_input(value=u.deg)
     @resets_cache
     def argument_of_periastron(self, value):
-        if isinstance(value, Quantity):
-            value = value.to("rad").value
         self._argument_of_periastron = value
 
     @property
@@ -189,8 +179,7 @@ class Planet(Body):
         return self._time_of_transit
 
     @time_of_transit.setter
+    @time
     @resets_cache
     def time_of_transit(self, value):
-        if isinstance(value, Time):
-            value = value.mjd
         self._time_of_transit = value
