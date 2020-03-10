@@ -5,6 +5,7 @@ from astropy.time import Time
 
 from .util import resets_cache, time
 
+
 class Body:
     def __init__(self, mass, radius, name="", **kwargs):
         self._orbit = None
@@ -13,6 +14,9 @@ class Body:
         self.name = name
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+    def __str__(self):
+        return self.name
 
     @property
     def mass(self):
@@ -36,7 +40,7 @@ class Body:
 
     @property
     def area(self):
-        return pi * self.radius**2
+        return pi * self.radius ** 2
 
     @property
     def circumference(self):
@@ -75,7 +79,6 @@ class Star(Body):
         self._effective_temperature = value
 
 
-
 class Planet(Body):
     def __init__(
         self,
@@ -83,7 +86,7 @@ class Planet(Body):
         radius,
         semi_major_axis,
         period,
-        eccentricity=0 * u.one,
+        eccentricity=0,
         inclination=pi / 2 * u.deg,
         argument_of_periastron=pi / 2 * u.deg,
         time_of_transit=Time(0, format="mjd"),
@@ -135,10 +138,9 @@ class Planet(Body):
         return self._eccentricity
 
     @eccentricity.setter
-    @u.quantity_input(value=u.one)
     @resets_cache
     def eccentricity(self, value):
-        if value > 1 * u.one or value < 0 * u.one:
+        if value > 1 or value < 0:
             raise ValueError("Eccentricity must be between 0 and 1")
         self._eccentricity = value
 

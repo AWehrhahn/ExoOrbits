@@ -153,12 +153,17 @@ class Orbit(hasCache):
         phase_angle : float
             phase angle in radians
         """
-        k = (t - self.t0).jd % self.p.to_value(u.day)
-        k = k / self.p.to_value(u.day)
+        # Determine whether the time is before or after transit
+        p = self.p.to_value(u.day)
+        k = (t - self.t0).jd % p
+        k = k / p
         k = np.where(k < 0.5, 1, -1)
+        # Calculate the angle
         f = self.true_anomaly(t)
         theta = np.arccos(np.sin(self.w + f) * np.sin(self.i))
-        return k * theta
+        theta -= 90 * u.deg
+        theta *= -1
+        return theta
 
     def projected_radius(self, t):
         """
