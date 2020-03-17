@@ -1,4 +1,3 @@
-
 import numpy as np
 from scipy.optimize import fsolve, minimize_scalar
 from scipy.constants import G, c
@@ -6,11 +5,9 @@ from astropy import constants as const
 from astropy import units as u
 from astropy.time import Time
 
-from .util import cache, hasCache
+from .util import cache, hasCache, time_input
 
 pi = np.pi
-m_jup = const.M_jup.to("kg").value
-m_sol = const.M_sun.to("kg").value
 
 # based on http://sredfield.web.wesleyan.edu/jesse_tarnas_thesis_final.pdf
 # and the exoplanet handbook
@@ -86,6 +83,7 @@ class Orbit(hasCache):
     def k(self):
         return self.r_p / self.r_s
 
+    @time_input
     def z(self, t):
         return self.projected_radius(t) / self.r_s
 
@@ -97,31 +95,34 @@ class Orbit(hasCache):
         """Furthest distance in the orbit"""
         return (1 + self.e) * self.a
 
+    @time_input
     def mean_anomaly(self, t):
         m = 2 * pi * (t - self.t0) / self.p
+        m = m * u.rad
         return m
 
+    @time_input
     def true_anomaly(self, t):
         root = np.sqrt((1 + self.e) / (1 - self.e))
         ea = self.eccentric_anomaly(t)
         f = 2 * np.arctan(root * np.tan(ea / 2))
         return f
 
+    @time_input
     def eccentric_anomaly(self, t):
-        tolerance = 1e-8
         m = self.mean_anomaly(t)
-        m = m.value
 
-        e = 0
+        tolerance = 1e-8 * m.unit
+        e = 0 * m.unit
         en = 10 * tolerance
         while np.any(np.abs(en - e) > tolerance):
             e = en
-            en = m + self.e.value * np.sin(e)
+            en = m + self.e * np.sin(e) * m.unit
 
-        en = ((en + np.pi) % (2 * np.pi)) - np.pi
-        # en = np.clip(en, -np.pi, np.pi)
+        en = ((en + np.pi * u.rad) % (2 * np.pi * u.rad)) - np.pi * u.rad
         return en
 
+    @time_input
     def distance(self, t):
         """Distance from the center of the star to the center of the planet
 
@@ -137,6 +138,7 @@ class Orbit(hasCache):
         """
         return self.a * (1 - self.e * np.cos(self.eccentric_anomaly(t)))
 
+    @time_input
     def phase_angle(self, t):
         """
         The phase angle describes the angle between
@@ -165,6 +167,7 @@ class Orbit(hasCache):
         theta *= -1
         return theta
 
+    @time_input
     def projected_radius(self, t):
         """
         Distance from the center of the star to the center of the planet,
@@ -185,6 +188,7 @@ class Orbit(hasCache):
         r = np.abs(d * np.sin(theta))
         return r
 
+    @time_input
     def position_3D(self, t):
         """Calculate the 3D position of the planet
 
@@ -216,10 +220,11 @@ class Orbit(hasCache):
         z = -r * np.cos(phase) * np.cos(i)
         return x, y, z
 
+    @time_input
     def mu(self, t):
         # mu = np.cos(self.phase_angle(t))
         r = self.projected_radius(t) / self.r_s
-        mu = np.full_like(r, -1.)
+        mu = np.full_like(r, -1.0)
         np.sqrt(1 - r ** 2, where=r <= 1, out=mu)
         return mu
 
@@ -290,6 +295,7 @@ class Orbit(hasCache):
         b = (t0 + 1e-8, t0 + self.p / 4)
         return self._find_contact(r, b)
 
+    @time_input
     def transit_depth(self, t):
         # r / r_s
         z = self.z(t)
@@ -343,8 +349,7 @@ class Orbit(hasCache):
             time in days
         """
         b = self.impact_parameter()
-        alpha = self.r_s / self.a * \
-            np.sqrt((1 + self.k) ** 2 - b ** 2) / np.sin(self.i)
+        alpha = self.r_s / self.a * np.sqrt((1 + self.k) ** 2 - b ** 2) / np.sin(self.i)
         return self.p / pi * np.arcsin(alpha)
 
     def transit_time_full_circular(self):
@@ -362,8 +367,7 @@ class Orbit(hasCache):
             time in days
         """
         b = self.impact_parameter()
-        alpha = self.r_s / self.a * \
-            np.sqrt((1 - self.k) ** 2 - b ** 2) / np.sin(self.i)
+        alpha = self.r_s / self.a * np.sqrt((1 - self.k) ** 2 - b ** 2) / np.sin(self.i)
         return self.p / pi * np.arcsin(alpha)
 
     def time_primary_transit(self):
@@ -404,6 +408,7 @@ class Orbit(hasCache):
         t_s = self.star.teff
         return np.log10(G * self.m_s / self.r_s ** 2) / np.log10(t_s)
 
+    @time_input
     def ellipsoid_variation_flux_fraction(self, t):
         beta = self.gravity_darkening_coefficient()
         return (
@@ -414,10 +419,12 @@ class Orbit(hasCache):
             * (np.cos(self.w + self.true_anomaly(t)) * np.cos(self.i)) ** 2
         )
 
+    @time_input
     def doppler_beaming_flux_fraction(self, t):
         rv = self.radial_velocity_star(t)
         return 4 * rv / c
 
+    @time_input
     def radial_velocity_planet(self, t):
         """Radial velocity of the planet
 
@@ -435,6 +442,7 @@ class Orbit(hasCache):
         f = self.true_anomaly(t)
         return self.v_s + K * (np.cos(self.w + f) + self.e * np.cos(self.w))
 
+    @time_input
     def radial_velocity_star(self, t):
         """Radial velocity of the star
 
@@ -450,7 +458,8 @@ class Orbit(hasCache):
         """
         K = self.radial_velocity_semiamplitude()
         f = self.true_anomaly(t)
-        return self.v_s + K * (np.cos(self.w + f) + self.e * np.cos(self.w))
+        rv = K * (np.cos(self.w + f) + self.e * np.cos(self.w))
+        return rv
 
     def radial_velocity_semiamplitude(self):
         """Radial velocity semiamplitude of the star
@@ -463,7 +472,7 @@ class Orbit(hasCache):
         m = self.m_p / u.M_jup * ((self.m_s + self.m_p) / u.M_sun) ** (-2 / 3)
         b = np.sin(self.i) / np.sqrt(1 - self.e ** 2)
         t = (self.p / u.year) ** (-1 / 3)
-        return 28.4329 * m * b * t * (u.m/u.s)
+        return 28.4329 * m * b * t * (u.m / u.s)
 
     def radial_velocity_semiamplitude_planet(self):
         """Radial velocity semiamplitude of the planet
@@ -476,4 +485,5 @@ class Orbit(hasCache):
         m = self.m_s / u.M_jup * ((self.m_s + self.m_p) / u.M_sun) ** (-2 / 3)
         b = np.sin(self.i) / np.sqrt(1 - self.e ** 2)
         t = (self.p / u.year) ** (-1 / 3)
-        return 28.4329 * m * b * t * (u.m/u.s)
+        return 28.4329 * m * b * t * (u.m / u.s)
+

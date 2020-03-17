@@ -3,7 +3,7 @@ from scipy.constants import G
 import astropy.units as u
 from astropy.time import Time
 
-from .util import resets_cache, time
+from .util import resets_cache, time_input
 
 
 class Body:
@@ -181,7 +181,7 @@ class Planet(Body):
         return self._time_of_transit
 
     @time_of_transit.setter
-    @time
+    @time_input
     @resets_cache
     def time_of_transit(self, value):
         self._time_of_transit = value
