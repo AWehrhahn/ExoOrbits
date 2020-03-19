@@ -87,8 +87,8 @@ class Planet(Body):
         semi_major_axis,
         period,
         eccentricity=0,
-        inclination=pi / 2 * u.deg,
-        argument_of_periastron=pi / 2 * u.deg,
+        inclination=pi / 2 * u.rad,
+        argument_of_periastron=pi / 2 * u.rad,
         time_of_transit=Time(0, format="mjd"),
         name="",
         **kwargs

@@ -163,8 +163,7 @@ class Orbit(hasCache):
         # Calculate the angle
         f = self.true_anomaly(t)
         theta = np.arccos(np.sin(self.w + f) * np.sin(self.i))
-        theta -= 90 * u.deg
-        theta *= -1
+        theta *= k
         return theta
 
     @time_input
@@ -225,7 +224,7 @@ class Orbit(hasCache):
         # mu = np.cos(self.phase_angle(t))
         r = self.projected_radius(t) / self.r_s
         mu = np.full_like(r, -1.0)
-        np.sqrt(1 - r ** 2, where=r <= 1, out=mu)
+        mu[r <= 1] = np.sqrt(1 - r[r <= 1] ** 2)
         return mu
 
     def _find_contact(self, r, bounds):
@@ -440,7 +439,8 @@ class Orbit(hasCache):
         """
         K = self.radial_velocity_semiamplitude_planet()
         f = self.true_anomaly(t)
-        return self.v_s + K * (np.cos(self.w + f) + self.e * np.cos(self.w))
+        rv = K * (np.cos(self.w + f) + self.e * np.cos(self.w))
+        return rv
 
     @time_input
     def radial_velocity_star(self, t):
