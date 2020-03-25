@@ -1,42 +1,36 @@
-from numpy import pi
-from scipy.constants import G
 import astropy.units as u
+from astropy.constants import G
+from astropy.coordinates import SkyCoord
+from astropy.io.misc import yaml
 from astropy.time import Time
+from numpy import pi
 
-from .util import resets_cache, time_input
+from .util import CollectionFactory, resets_cache, time_input
+
+# TODO: pylint shows a bunch of errors, since it can't see the members of Body
+# that are added due to the decorator
 
 
+@CollectionFactory
 class Body:
-    def __init__(self, mass, radius, name="", **kwargs):
+    # fmt: off
+    _fields = [
+        ("mass", [], u.kg, 0 * u.kg, "Mass"),
+        ("radius", [], u.km, 0 * u.km, "Radius")
+    ]
+    # fmt: on
+
+    def __init__(self, **kwargs):
         self._orbit = None
-        self.mass = mass
-        self.radius = radius
-        self.name = name
+        self.name = ""
+        for name, _, _, default, _ in self._fields:
+            setattr(self, name, default)
+
         for k, v in kwargs.items():
             setattr(self, k, v)
 
     def __str__(self):
         return self.name
-
-    @property
-    def mass(self):
-        return self._mass
-
-    @mass.setter
-    @u.quantity_input(value=u.kg)
-    @resets_cache
-    def mass(self, value):
-        self._mass = value
-
-    @property
-    def radius(self):
-        return self._radius
-
-    @radius.setter
-    @u.quantity_input(value=u.km)
-    @resets_cache
-    def radius(self, value):
-        self._radius = value
 
     @property
     def area(self):
@@ -58,130 +52,53 @@ class Body:
     def density(self):
         return self.mass / self.volume
 
+    def save(self, fname):
+        data = {key: getattr(self, key) for key in self._names}
+        with open(fname, "w") as file:
+            yaml.dump(data, stream=file)
 
+    @classmethod
+    def load(cls, fname):
+        with open(fname, "r") as file:
+            data = yaml.load(file)
+
+        return cls(**data)
+
+
+@CollectionFactory
 class Star(Body):
-    def __init__(self, mass, radius, effective_temperature, name="", **kwargs):
-        super().__init__(mass, radius, name=name, **kwargs)
-        self.effective_temperature = effective_temperature
+    # TODO: Surface gravity could be represented more accurately as u.LogUnit("cm/s**2")
+    # And Metallicity as u.Unit("dex")
 
-    @property
-    def effective_temperature(self):
-        return self._effective_temperature
+    # fmt: off
+    _fields = Body._fields + [
+        ("effective_temperature", ["teff"], u.K, 5000 * u.K, "effective temperature"),
+        ("surface_gravity", ["logg"], u.one, 4 * u.one,  "surface gravity in log(cgs) units"),
+        ("metallicity", ["monh", "feh"], u.one, 0 * u.one, "metallicity in dex relative to base abundances"),
+        ("turbulence_velocity", ["vturb"], u.km/u.s, 1 * u.km / u.s, "turbulence velocity"),
+        ("coordinates", [], SkyCoord, SkyCoord(0, 0, unit=u.deg), "coordinates on the sky"),
+        ("distance", [], u.parsec, 0 * u.parsec, "distance from the Sun"),
+        ("radial_velocity", ["rv"], u.km / u.s, 0 * u.km/u.s, "radial velocity of the star")
+    ]
+    # fmt: on
 
-    @property
-    def teff(self):
-        return self._effective_temperature
-
-    @effective_temperature.setter
-    @u.quantity_input(value=u.K)
-    @resets_cache
-    def effective_temperature(self, value):
-        self._effective_temperature = value
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
+@CollectionFactory
 class Planet(Body):
-    def __init__(
-        self,
-        mass,
-        radius,
-        semi_major_axis,
-        period,
-        eccentricity=0,
-        inclination=pi / 2 * u.rad,
-        argument_of_periastron=pi / 2 * u.rad,
-        time_of_transit=Time(0, format="mjd"),
-        name="",
-        **kwargs
-    ):
-        super().__init__(mass, radius, name=name, **kwargs)
-        self.semi_major_axis = semi_major_axis
-        self.period = period
-        self.eccentricity = eccentricity
-        self.inclination = inclination
-        self.argument_of_periastron = argument_of_periastron
-        self.time_of_transit = time_of_transit
+    # fmt: off
+    _fields = Body._fields + [
+        ("semi_major_axis", ["sma", "a"], u.km, 1 * u.AU, "semi major axis"),
+        ("orbital_period", ["period", "p"], u.day, 365 * u.day, "orbital period"),
+        ("eccentricity", ["e", "ecc"], u.one, 0 * u.one, "eccentricity"),
+        ("inclination", ["inc", "i"], u.deg, 90 * u.deg, "inclination"),
+        ("argument_of_periastron", ["w"], u.deg, 90 * u.deg, "argument of periastron"),
+        ("time_of_transit", ["t0"], Time, Time(0, format="mjd"), "time of transit"),
+        ("transit_duration", [], u.day, 0 * u.day, "duration of transit"),
+    ]
+    # fmt: on
 
-    @property
-    def semi_major_axis(self):
-        return self._semi_major_axis
-
-    @property
-    def a(self):
-        return self._semi_major_axis
-
-    @semi_major_axis.setter
-    @u.quantity_input(value=u.km)
-    @resets_cache
-    def semi_major_axis(self, value):
-        self._semi_major_axis = value
-
-    @property
-    def period(self):
-        return self._period
-
-    @property
-    def p(self):
-        return self._period
-
-    @period.setter
-    @u.quantity_input(value=u.day)
-    @resets_cache
-    def period(self, value):
-        self._period = value
-
-    @property
-    def eccentricity(self):
-        return self._eccentricity
-
-    @property
-    def ecc(self):
-        return self._eccentricity
-
-    @eccentricity.setter
-    @resets_cache
-    def eccentricity(self, value):
-        if value > 1 or value < 0:
-            raise ValueError("Eccentricity must be between 0 and 1")
-        self._eccentricity = value
-
-    @property
-    def inclination(self):
-        return self._inclination
-
-    @property
-    def inc(self):
-        return self._inclination
-
-    @inclination.setter
-    @u.quantity_input(value=u.deg)
-    @resets_cache
-    def inclination(self, value):
-        self._inclination = value
-
-    @property
-    def argument_of_periastron(self):
-        return self._argument_of_periastron
-
-    @property
-    def w(self):
-        return self._argument_of_periastron
-
-    @argument_of_periastron.setter
-    @u.quantity_input(value=u.deg)
-    @resets_cache
-    def argument_of_periastron(self, value):
-        self._argument_of_periastron = value
-
-    @property
-    def time_of_transit(self):
-        return self._time_of_transit
-
-    @property
-    def t0(self):
-        return self._time_of_transit
-
-    @time_of_transit.setter
-    @time_input
-    @resets_cache
-    def time_of_transit(self, value):
-        self._time_of_transit = value
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

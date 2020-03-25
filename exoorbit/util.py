@@ -3,6 +3,7 @@ from functools import wraps, lru_cache
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
+from astropy.coordinates import SkyCoord
 
 
 class hasCache:
@@ -66,3 +67,61 @@ def time_input(function):
         return function(self, value)
 
     return wrapper
+
+
+def coord_input(function):
+    """ Converts the input of a function into a SkyCoord object """
+
+    @wraps(function)
+    def wrapper(self, value):
+        value = SkyCoord(value)
+        return function(self, value)
+
+    return wrapper
+
+
+def fget(name):
+    name = f"_{name}"
+
+    def f(self):
+        return getattr(self, name)
+
+    return f
+
+
+def fset(name, unit):
+    name = f"_{name}"
+
+    try:
+        unit = u.Unit(unit)
+        decorator = u.quantity_input(value=unit)
+    except TypeError:
+        if unit is Time:
+            decorator = time_input
+        elif unit is SkyCoord:
+            decorator = coord_input
+        else:
+            raise TypeError(f"Expected a Quantity, Time, or SkyCoord, but got {unit}")
+
+    @decorator
+    def f(self, value):
+        setattr(self, name, value)
+
+    return f
+
+
+def CollectionFactory(cls):
+    """ Decorator that turns Collection _fields into properties """
+
+    # Add properties to the class
+    for name, alt_names, unit, _, doc in cls._fields:
+        getter = fget(name)
+        setter = fset(name, unit)
+
+        setattr(cls, name, property(getter, setter, None, doc))
+        for alt in alt_names:
+            setattr(cls, alt, property(getter, setter))
+
+    cls._names = [f[0] for f in cls._fields]
+
+    return cls
