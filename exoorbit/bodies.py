@@ -1,5 +1,5 @@
 import astropy.units as u
-from astropy.constants import G
+from astropy.constants import G, R
 from astropy.coordinates import SkyCoord
 from astropy.io.misc import yaml
 from astropy.time import Time
@@ -97,8 +97,31 @@ class Planet(Body):
         ("argument_of_periastron", ["w"], u.deg, 90 * u.deg, "argument of periastron"),
         ("time_of_transit", ["t0"], Time, Time(0, format="mjd"), "time of transit"),
         ("transit_duration", [], u.day, 0 * u.day, "duration of transit"),
+        ("stellar_teff", [], u.K, 5000 * u.K, "temperature of the host star"),
     ]
     # fmt: on
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    @property
+    def teff(self):
+        teff = ((pi * self.radius ** 2) / self.a ** 2) ** 0.25 * self.stellar_teff
+        return teff
+
+    @property
+    def atm_molar_mass(self):
+        if self.mass > 10 * u.M_earth:
+            # Hydrogen (e.g. for gas giants)
+            atm_molar_mass = 2.5 * (u.g / u.mol)
+        else:
+            # dry air (mostly nitrogen)  (e.g. for terrestial planets)
+            atm_molar_mass = 29 * (u.g / u.mol)
+        return atm_molar_mass
+
+    @property
+    def atm_scale_height(self):
+        atm_scale_height = (
+            R * self.teff * self.radius ** 2 / (G * self.mass * self.atm_molar_mass)
+        )
+        return atm_scale_height
