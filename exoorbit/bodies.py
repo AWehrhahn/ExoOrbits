@@ -27,7 +27,13 @@ class Body:
             setattr(self, name, default)
 
         for k, v in kwargs.items():
-            setattr(self, k, v)
+            try:
+                setattr(self, k, v)
+            except Exception:
+                unit = getattr(self, k).unit
+                value = v.value if hasattr(v, "value") else v
+                print(f"WARNING: Setting units of {k} to {unit}")
+                setattr(self, k, value * unit)
 
     def __str__(self):
         return self.name
@@ -75,10 +81,12 @@ class Star(Body):
         ("effective_temperature", ["teff"], u.K, 5000 * u.K, "effective temperature"),
         ("surface_gravity", ["logg"], u.one, 4 * u.one,  "surface gravity in log(cgs) units"),
         ("metallicity", ["monh", "feh"], u.one, 0 * u.one, "metallicity in dex relative to base abundances"),
-        ("turbulence_velocity", ["vturb"], u.km/u.s, 1 * u.km / u.s, "turbulence velocity"),
+        ("turbulence_velocity", ["vturb", "vmac"], u.km/u.s, 1 * u.km / u.s, "(macro) turbulence velocity"),
+        ("micro_turbulence_velocity", ["vmic"], u.km / u.s, 1 * u.km / u.s, "micro turbulence velocity"),
         ("coordinates", [], SkyCoord, SkyCoord(0, 0, unit=u.deg), "coordinates on the sky"),
         ("distance", [], u.parsec, 0 * u.parsec, "distance from the Sun"),
-        ("radial_velocity", ["rv"], u.km / u.s, 0 * u.km/u.s, "radial velocity of the star")
+        ("radial_velocity", ["rv"], u.km / u.s, 0 * u.km/u.s, "radial velocity of the star"),
+        ("rotational_velocity_projected", ["vsini"], u.km / u.s, 0 * u.km / u.s, "projected rotational velocity of the stellar surface"),
     ]
     # fmt: on
 
@@ -97,17 +105,11 @@ class Planet(Body):
         ("argument_of_periastron", ["w"], u.deg, 90 * u.deg, "argument of periastron"),
         ("time_of_transit", ["t0"], Time, Time(0, format="mjd"), "time of transit"),
         ("transit_duration", [], u.day, 0 * u.day, "duration of transit"),
-        ("stellar_teff", [], u.K, 5000 * u.K, "temperature of the host star"),
     ]
     # fmt: on
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-    @property
-    def teff(self):
-        teff = ((pi * self.radius ** 2) / self.a ** 2) ** 0.25 * self.stellar_teff
-        return teff
 
     @property
     def atm_molar_mass(self):
@@ -119,9 +121,15 @@ class Planet(Body):
             atm_molar_mass = 29 * (u.g / u.mol)
         return atm_molar_mass
 
-    @property
-    def atm_scale_height(self):
+    @u.quantity_input(stellar_teff=u.K)
+    def teff_from_stellar(self, stellar_teff):
+        teff = ((pi * self.radius ** 2) / self.a ** 2) ** 0.25 * stellar_teff
+        return teff
+
+    @u.quantity_input(stellar_teff=u.K)
+    def atm_scale_height(self, stellar_teff):
+        teff = self.teff_from_stellar(stellar_teff)
         atm_scale_height = (
-            R * self.teff * self.radius ** 2 / (G * self.mass * self.atm_molar_mass)
+            R * teff * self.radius ** 2 / (G * self.mass * self.atm_molar_mass)
         )
         return atm_scale_height
