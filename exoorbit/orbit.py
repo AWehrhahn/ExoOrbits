@@ -223,9 +223,34 @@ class Orbit(hasCache):
     def mu(self, t):
         # mu = np.cos(self.phase_angle(t))
         r = self.projected_radius(t) / self.r_s
+        r = r.decompose()
         mu = np.full_like(r, -1.0)
         mu[r <= 1] = np.sqrt(1 - r[r <= 1] ** 2)
+        mu[r > 1] = - np.sqrt(- 1 + r[r > 1]**2 )
         return mu
+
+
+    @time_input
+    def stellar_surface_covered_by_planet(self, t):
+        d = self.projected_radius(t)
+        area = np.zeros(len(t)) << u.one
+
+        # Use these to make it a bit more readable
+        R = self.star.radius
+        r = self.planet.radius
+        # Case 1: planet completely inside the disk
+        area[d + r <= R] = r ** 2 / R **2
+        # Case 2: planet completely outside the disk
+        area[d - r >= R] = 0
+        # Case 3: inbetween
+        select = (d + r > R) & (d - r < R)
+        dp = d[select]
+        area1 = r**2 * np.arccos((dp**2 + r**2 - R**2) / (2 * dp * r))
+        area2 = R**2 * np.arccos((dp**2 + R**2 - r**2) / (2 * dp * R))
+        area3 = 0.5 * np.sqrt((-dp + r + R) * (dp + r - R) * (dp - r + R) * (dp + r + R)) * u.rad
+        area[select] = (area1 + area2 - area3) / (np.pi * u.rad * R**2)
+
+        return area
 
     def _find_contact(self, r, bounds):
         func = lambda t: abs(self.projected_radius(Time(t, format="mjd")) - r).value
@@ -486,4 +511,3 @@ class Orbit(hasCache):
         b = np.sin(self.i) / np.sqrt(1 - self.e ** 2)
         t = (self.p / u.year) ** (-1 / 3)
         return 28.4329 * m * b * t * (u.m / u.s)
-
