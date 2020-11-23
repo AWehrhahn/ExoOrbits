@@ -60,6 +60,7 @@ class Body:
 
     def save(self, fname):
         data = {key: getattr(self, key) for key in self._names}
+        data["name"] = self.name
         with open(fname, "w") as file:
             yaml.dump(data, stream=file)
 
@@ -110,6 +111,19 @@ class Planet(Body):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._surface_gravity = None
+
+    @property
+    def surface_gravity(self):
+        if self._surface_gravity is None:
+            return self.gravity_value / self.radius ** 2
+        else:
+            return self._surface_gravity
+
+    @surface_gravity.setter
+    @u.quantity_input(value=u.cm / u.s ** 2)
+    def surface_gravity(self, value):
+        self._surface_gravity = value
 
     @property
     def atm_molar_mass(self):
