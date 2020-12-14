@@ -38,6 +38,17 @@ class Body:
     def __str__(self):
         return self.name
 
+    def to_dict(self):
+        data = {}
+        names = [f[0] for f in self._fields]
+        for name in names:
+            data[name] = getattr(self, name)
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(**data)
+
     @property
     def area(self):
         return pi * self.radius ** 2

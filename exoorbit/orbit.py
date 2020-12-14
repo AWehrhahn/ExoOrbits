@@ -226,9 +226,8 @@ class Orbit(hasCache):
         r = r.decompose()
         mu = np.full_like(r, -1.0)
         mu[r <= 1] = np.sqrt(1 - r[r <= 1] ** 2)
-        mu[r > 1] = - np.sqrt(- 1 + r[r > 1]**2 )
+        mu[r > 1] = -np.sqrt(-1 + r[r > 1] ** 2)
         return mu
-
 
     @time_input
     def stellar_surface_covered_by_planet(self, t):
@@ -239,16 +238,20 @@ class Orbit(hasCache):
         R = self.star.radius
         r = self.planet.radius
         # Case 1: planet completely inside the disk
-        area[d + r <= R] = r ** 2 / R **2
+        area[d + r <= R] = r ** 2 / R ** 2
         # Case 2: planet completely outside the disk
         area[d - r >= R] = 0
         # Case 3: inbetween
         select = (d + r > R) & (d - r < R)
         dp = d[select]
-        area1 = r**2 * np.arccos((dp**2 + r**2 - R**2) / (2 * dp * r))
-        area2 = R**2 * np.arccos((dp**2 + R**2 - r**2) / (2 * dp * R))
-        area3 = 0.5 * np.sqrt((-dp + r + R) * (dp + r - R) * (dp - r + R) * (dp + r + R)) * u.rad
-        area[select] = (area1 + area2 - area3) / (np.pi * u.rad * R**2)
+        area1 = r ** 2 * np.arccos((dp ** 2 + r ** 2 - R ** 2) / (2 * dp * r))
+        area2 = R ** 2 * np.arccos((dp ** 2 + R ** 2 - r ** 2) / (2 * dp * R))
+        area3 = (
+            0.5
+            * np.sqrt((-dp + r + R) * (dp + r - R) * (dp - r + R) * (dp + r + R))
+            * u.rad
+        )
+        area[select] = (area1 + area2 - area3) / (np.pi * u.rad * R ** 2)
 
         return area
 
@@ -450,7 +453,10 @@ class Orbit(hasCache):
 
     @time_input
     def radial_velocity_planet(self, t):
-        """Radial velocity of the planet
+        """
+        Radial velocity of the planet in the restframe of the host star
+        Positive radial velocity means the planet is moving towards the observer,
+        and negative values mean the planet is moving away
 
         Parameters
         ----------
