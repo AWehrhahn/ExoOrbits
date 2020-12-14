@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.optimize import fsolve, minimize_scalar
+from scipy.optimize import fsolve, minimize_scalar, minimize
 from scipy.constants import G, c
 from astropy import constants as const
 from astropy import units as u
@@ -256,13 +256,23 @@ class Orbit(hasCache):
         return area
 
     def _find_contact(self, r, bounds):
-        func = lambda t: abs(self.projected_radius(Time(t, format="mjd")) - r).value
-        bounds = [bounds[0].mjd, bounds[1].mjd]
-        res = minimize_scalar(
-            func, bounds=bounds, method="bounded", options={"xatol": 1e-12}
+        func = lambda t: np.abs(
+            (self.projected_radius(Time(t, format="mjd")) - r).value
         )
+        bounds = [bounds[0].mjd, bounds[1].mjd]
+        # res = minimize_scalar(
+        #     func, bounds=bounds, method="bounded", options={"xatol": 1e-16}
+        # )
+        t0 = bounds[0] + (bounds[1] - bounds[0]) / 4
+        res = minimize(func, [t0], bounds=[bounds], method="Powell")
         res = Time(res.x, format="mjd")
         return res
+
+        # plt.clf()
+        # x = np.linspace(bounds[0], bounds[1], 1000)
+        # plt.plot(x, func(x))
+        # plt.plot(res.x, func(res.x), "rD")
+        # plt.savefig("bla.png")
 
     def first_contact(self):
         """
@@ -276,7 +286,7 @@ class Orbit(hasCache):
         """
         t0 = self.time_primary_transit()
         r = self.r_s + self.r_p
-        b = (t0 - self.p / 4, t0 - 1e-8)
+        b = (t0 - self.p / 4, t0)
         return self._find_contact(r, b)
 
     def second_contact(self):
@@ -290,7 +300,7 @@ class Orbit(hasCache):
         """
         t0 = self.time_primary_transit()
         r = self.r_s - self.r_p
-        b = (t0 - self.p / 4, t0 - 1e-8)
+        b = (t0 - self.p / 4, t0)
         return self._find_contact(r, b)
 
     def third_contact(self):
@@ -305,7 +315,7 @@ class Orbit(hasCache):
         """
         t0 = self.time_primary_transit()
         r = self.r_s - self.r_p
-        b = (t0 + 1e-8, t0 + self.p / 4)
+        b = (t0, t0 + self.p / 4)
         return self._find_contact(r, b)
 
     def fourth_contact(self):
@@ -319,7 +329,7 @@ class Orbit(hasCache):
         """
         t0 = self.time_primary_transit()
         r = self.r_s + self.r_p
-        b = (t0 + 1e-8, t0 + self.p / 4)
+        b = (t0, t0 + self.p / 4)
         return self._find_contact(r, b)
 
     @time_input
