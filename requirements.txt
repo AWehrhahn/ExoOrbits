@@ -2,3 +2,4 @@ numpy
 scipy
 astropy
 pytest
+pyyaml
