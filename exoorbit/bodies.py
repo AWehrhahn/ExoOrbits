@@ -43,6 +43,7 @@ class Body:
         names = [f[0] for f in self._fields]
         for name in names:
             data[name] = getattr(self, name)
+        data["name"] = self.name
         return data
 
     @classmethod
@@ -70,8 +71,7 @@ class Body:
         return self.mass / self.volume
 
     def save(self, fname):
-        data = {key: getattr(self, key) for key in self._names}
-        data["name"] = self.name
+        data = self.to_dict()
         with open(fname, "w") as file:
             yaml.dump(data, stream=file)
 
@@ -80,7 +80,7 @@ class Body:
         with open(fname, "r") as file:
             data = yaml.load(file)
 
-        return cls(**data)
+        return cls.from_dict(data)
 
 
 @CollectionFactory
