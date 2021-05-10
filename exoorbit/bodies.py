@@ -27,6 +27,8 @@ class Body:
             setattr(self, name, default)
 
         for k, v in kwargs.items():
+            if v is None:
+                continue
             try:
                 setattr(self, k, v)
             except Exception:
