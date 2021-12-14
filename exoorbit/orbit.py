@@ -193,7 +193,7 @@ class Orbit:
         return r
 
     @time_input
-    def position_3D(self, t: Time) -> Tuple[u.Quantity[u.km], u.Quantity[u.km], u.Quantity[u.km]]:
+    def position_3D(self, t: Time) -> Tuple[u.Quantity, u.Quantity, u.Quantity]:
         """Calculate the 3D position of the planet
 
         the coordinate system is centered in the star, x is towards the observer, z is "north", and y to the "right"
