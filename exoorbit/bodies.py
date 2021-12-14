@@ -13,7 +13,9 @@ from astropy.time import Time
 from astropy.units.quantity import Quantity
 from numpy import pi
 
-from dataclasses_quantity import dataclass
+from exoorbit.util import time_input
+
+from .dataclasses_quantity import dataclass
 
 
 @dataclass
@@ -117,9 +119,13 @@ class Planet(Body):
     #:Quantity(deg): argument of periastron, where 90 deg is facing the observer
     omega: Quantity[u.deg] = 90 * u.deg
     #:Time: one known time of transit
-    t0: Time = None
+    time_of_transit: Time = Time(0, format="mjd")
     #:Quantity(day): duration of the transit, from first contact to fourth contact
     transit_duration: Quantity[u.day] = 0 * u.day
+
+    @property
+    def t0(self) -> Time:
+        return self.time_of_transit
 
     @property
     @u.quantity_input

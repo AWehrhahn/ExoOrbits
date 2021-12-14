@@ -61,7 +61,7 @@ class Orbit:
 
     @property
     def t0(self):
-        return self.planet.time_of_transit
+        return self.planet.t0
 
     @property
     def r_s(self):
