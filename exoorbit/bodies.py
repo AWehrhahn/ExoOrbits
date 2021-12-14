@@ -62,7 +62,7 @@ class Body(DataclassIO):
 
     @property
     @u.quantity_input
-    def gravity_value(self) -> Quantity[u.g/u.cm**2]:
+    def gravity_value(self) -> Quantity[u.m**3/u.s**2]:
         """Quantity(): specific gravity parameter for this object"""
         return G * self.mass
 
@@ -127,7 +127,7 @@ class Planet(Body):
 
     @property
     @u.quantity_input
-    def surface_gravity(self) -> Quantity[u.g / u.cm ** 2]:
+    def surface_gravity(self) -> Quantity[u.m / u.s ** 2]:
         """Quantity(): surface gravity in normal (non logarithmic) units"""
         return self.gravity_value / self.radius ** 2
 
