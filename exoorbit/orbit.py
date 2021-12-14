@@ -1,3 +1,5 @@
+from typing import Tuple
+from exoorbit.bodies import Planet, Star
 import numpy as np
 from scipy.optimize import minimize
 from scipy.constants import G, c
@@ -20,7 +22,7 @@ pi = np.pi
 
 
 class Orbit:
-    def __init__(self, star, planet):
+    def __init__(self, star: Star, planet: Planet):
         """Calculates the orbit of an exoplanet
 
         Parameters
@@ -40,76 +42,79 @@ class Orbit:
         self.albedo = 1
 
     @property
-    def a(self):
+    def a(self) -> u.km:
         return self.planet.sma
 
     @property
-    def p(self):
+    def p(self) -> u.day:
         return self.planet.period
 
     @property
-    def e(self):
+    def e(self) -> u.one:
         return self.planet.ecc
 
     @property
-    def i(self):
+    def i(self) -> u.deg:
         return self.planet.inc
 
     @property
-    def w(self):
+    def w(self) -> u.deg:
         return self.planet.omega
 
     @property
-    def t0(self):
+    def t0(self) -> Time:
         return self.planet.t0
 
     @property
-    def r_s(self):
+    def r_s(self) -> u.km:
         return self.star.radius
 
     @property
-    def m_s(self):
+    def m_s(self) -> u.kg:
         return self.star.mass
 
     @property
-    def r_p(self):
+    def r_p(self) -> u.km:
         return self.planet.radius
 
     @property
-    def m_p(self):
+    def m_p(self) -> u.kg:
         return self.planet.mass
 
     @property
-    def k(self):
+    def k(self) -> u.one:
         return self.r_p / self.r_s
 
     @time_input
-    def z(self, t):
+    def z(self, t: Time) -> u.one:
+        """projected radius in units of the stellar disk"""
         return self.projected_radius(t) / self.r_s
 
-    def periapsis_distance(self):
+    @u.quantity_input
+    def periapsis_distance(self) -> u.km:
         """Closest distance in the orbit"""
         return (1 - self.e) * self.a
 
-    def apoapsis_distance(self):
+    @u.quantity_input
+    def apoapsis_distance(self) -> u.km:
         """Furthest distance in the orbit"""
         return (1 + self.e) * self.a
 
     @time_input
-    def mean_anomaly(self, t):
+    def mean_anomaly(self, t: Time) -> u.rad:
         m = 2 * pi * (t - self.t0) / self.p
         m = m * u.rad
         return m
 
     @time_input
-    def true_anomaly(self, t):
+    def true_anomaly(self, t: Time) -> u.rad:
         root = np.sqrt((1 + self.e) / (1 - self.e))
         ea = self.eccentric_anomaly(t)
         f = 2 * np.arctan(root * np.tan(ea / 2))
         return f
 
     @time_input
-    def eccentric_anomaly(self, t):
+    def eccentric_anomaly(self, t: Time) -> u.rad:
         m = self.mean_anomaly(t)
 
         tolerance = 1e-8 * m.unit
@@ -123,7 +128,7 @@ class Orbit:
         return en
 
     @time_input
-    def distance(self, t):
+    def distance(self, t: Time) -> u.km:
         """Distance from the center of the star to the center of the planet
 
         Parameters
@@ -139,7 +144,7 @@ class Orbit:
         return self.a * (1 - self.e * np.cos(self.eccentric_anomaly(t)))
 
     @time_input
-    def phase_angle(self, t):
+    def phase_angle(self, t: Time) -> u.rad:
         """
         The phase angle describes the angle between
         the vector of observer’s line-of-sight and the
@@ -167,7 +172,7 @@ class Orbit:
         return theta
 
     @time_input
-    def projected_radius(self, t):
+    def projected_radius(self, t: Time) -> u.km:
         """
         Distance from the center of the star to the center of the planet,
         i.e. distance projected on the stellar disk
@@ -188,7 +193,7 @@ class Orbit:
         return r
 
     @time_input
-    def position_3D(self, t):
+    def position_3D(self, t: Time) -> Tuple[u.km, u.km, u.km]:
         """Calculate the 3D position of the planet
 
         the coordinate system is centered in the star, x is towards the observer, z is "north", and y to the "right"
@@ -220,7 +225,7 @@ class Orbit:
         return x, y, z
 
     @time_input
-    def mu(self, t):
+    def mu(self, t: Time) -> u.one:
         # mu = np.cos(self.phase_angle(t))
         r = self.projected_radius(t) / self.r_s
         r = r.decompose()
@@ -230,7 +235,7 @@ class Orbit:
         return mu
 
     @time_input
-    def stellar_surface_covered_by_planet(self, t):
+    def stellar_surface_covered_by_planet(self, t: Time) -> u.one:
         d = self.projected_radius(t)
         area = np.zeros(len(t)) << u.one
 
@@ -255,7 +260,7 @@ class Orbit:
 
         return area
 
-    def _find_contact(self, r, bounds):
+    def _find_contact(self, r: u.km, bounds: Tuple[float, float]) -> Time:
         func = lambda t: np.abs(
             (self.projected_radius(Time(t, format="mjd")) - r).value
         )
@@ -265,7 +270,7 @@ class Orbit:
         res = Time(res.x, format="mjd")
         return res
 
-    def first_contact(self):
+    def first_contact(self) -> Time:
         """
         First contact is when the outer edge of the planet touches the stellar disk,
         i.e. when the transit curve begins
@@ -280,7 +285,7 @@ class Orbit:
         b = (t0 - self.p / 4, t0)
         return self._find_contact(r, b)
 
-    def second_contact(self):
+    def second_contact(self) -> Time:
         """
         Second contact is when the planet is completely in the stellar disk for the first time
 
@@ -294,7 +299,7 @@ class Orbit:
         b = (t0 - self.p / 4, t0)
         return self._find_contact(r, b)
 
-    def third_contact(self):
+    def third_contact(self) -> Time:
         """
         Third contact is when the planet begins to leave the stellar disk,
         but is still completely within the disk
@@ -309,7 +314,7 @@ class Orbit:
         b = (t0, t0 + self.p / 4)
         return self._find_contact(r, b)
 
-    def fourth_contact(self):
+    def fourth_contact(self) -> Time:
         """
         Fourth contact is when the planet completely left the stellar disk
 
@@ -324,7 +329,7 @@ class Orbit:
         return self._find_contact(r, b)
 
     @time_input
-    def transit_depth(self, t):
+    def transit_depth(self, t: Time) -> u.one:
         # r / r_s
         z = self.z(t)
         # r_p / r_s
@@ -347,7 +352,8 @@ class Orbit:
 
         return depth
 
-    def impact_parameter(self):
+    @u.quantity_input
+    def impact_parameter(self) -> u.one:
         """
         The impact parameter is the shortest projected distance during a transit,
         i.e. how close the planet gets to the center of the star
@@ -363,7 +369,8 @@ class Orbit:
         e = (1 - self.e ** 2) / (1 + self.e * np.sin(self.w))
         return d * e
 
-    def transit_time_total_circular(self):
+    @u.quantity_input
+    def transit_time_total_circular(self) -> u.day:
         """
         The total time spent in transit for a circular orbit,
         i.e. if eccentricity where 0
@@ -380,7 +387,8 @@ class Orbit:
         alpha = self.r_s / self.a * np.sqrt((1 + self.k) ** 2 - b ** 2) / np.sin(self.i)
         return self.p / pi * np.arcsin(alpha)
 
-    def transit_time_full_circular(self):
+    @u.quantity_input
+    def transit_time_full_circular(self) -> u.day:
         """
         The total time spent in full transit for a circular orbit,
         i.e. the time during which the planet is completely inside the stellar disk
@@ -398,7 +406,7 @@ class Orbit:
         alpha = self.r_s / self.a * np.sqrt((1 - self.k) ** 2 - b ** 2) / np.sin(self.i)
         return self.p / pi * np.arcsin(alpha)
 
-    def time_primary_transit(self):
+    def time_primary_transit(self) -> Time:
         """
         The time of the primary transit,
         should be the same as t0
@@ -411,10 +419,11 @@ class Orbit:
         b = (self.t0 - self.p / 4, self.t0 + self.p / 4)
         return self._find_contact(0, b)
 
-    def time_secondary_eclipse(self):
-        return self.p / 2 * (1 + 4 * self.e * np.cos(self.w))
+    def time_secondary_eclipse(self) -> Time:
+        return self.t0 + self.p / 2 * (1 + 4 * self.e * np.cos(self.w))
 
-    def impact_parameter_secondary_eclipse(self):
+    @u.quantity_input
+    def impact_parameter_secondary_eclipse(self) -> u.one:
         return (
             self.a
             * np.cos(self.i)
@@ -423,7 +432,8 @@ class Orbit:
             / (1 - self.e * np.sin(self.w))
         )
 
-    def reflected_light_fraction(self, t):
+    @time_input
+    def reflected_light_fraction(self, t: Time) -> u.one:
         return (
             self.albedo
             / 2
@@ -432,12 +442,12 @@ class Orbit:
             * (1 + np.cos(self.phase_angle(t)))
         )
 
-    def gravity_darkening_coefficient(self):
+    def gravity_darkening_coefficient(self) -> u.one:
         t_s = self.star.teff
         return np.log10(G * self.m_s / self.r_s ** 2) / np.log10(t_s)
 
     @time_input
-    def ellipsoid_variation_flux_fraction(self, t):
+    def ellipsoid_variation_flux_fraction(self, t: Time) -> u.one:
         beta = self.gravity_darkening_coefficient()
         return (
             beta
@@ -448,12 +458,12 @@ class Orbit:
         )
 
     @time_input
-    def doppler_beaming_flux_fraction(self, t):
+    def doppler_beaming_flux_fraction(self, t: Time) -> u.one:
         rv = self.radial_velocity_star(t)
         return 4 * rv / c
 
     @time_input
-    def radial_velocity_planet(self, t):
+    def radial_velocity_planet(self, t: Time) -> u.km / u.s:
         """
         Radial velocity of the planet in the restframe of the host star
         Positive radial velocity means the planet is moving towards the observer,
@@ -475,7 +485,7 @@ class Orbit:
         return rv
 
     @time_input
-    def radial_velocity_star(self, t):
+    def radial_velocity_star(self, t: Time) -> u.km / u.s:
         """Radial velocity of the star
 
         Parameters
@@ -493,7 +503,8 @@ class Orbit:
         rv = K * (np.cos(self.w + f) + self.e * np.cos(self.w))
         return rv
 
-    def radial_velocity_semiamplitude(self):
+    @u.quantity_input
+    def radial_velocity_semiamplitude(self) -> u.km / u.s:
         """Radial velocity semiamplitude of the star
 
         Returns
@@ -506,7 +517,8 @@ class Orbit:
         t = (self.p / u.year) ** (-1 / 3)
         return 28.4329 * m * b * t * (u.m / u.s)
 
-    def radial_velocity_semiamplitude_planet(self):
+    @u.quantity_input
+    def radial_velocity_semiamplitude_planet(self) -> u.km / u.s:
         """Radial velocity semiamplitude of the planet
 
         Returns
