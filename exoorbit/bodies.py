@@ -62,7 +62,7 @@ class Body(DataclassIO):
 
     @property
     @u.quantity_input
-    def gravity_value(self) -> Quantity[u.m**3/u.s**2]:
+    def gravity_value(self) -> Quantity[u.m ** 3 / u.s ** 2]:
         """Quantity(): specific gravity parameter for this object"""
         return G * self.mass
 
@@ -181,7 +181,7 @@ class Planet(Body):
         equi_temp: u.K
             equilibrium temperature of the planet
         """
-        teff = ((pi * self.radius ** 2) / self.a ** 2) ** 0.25 * stellar_teff
+        teff = ((pi * self.radius ** 2) / self.sma ** 2) ** 0.25 * stellar_teff
         return teff
 
     @u.quantity_input
