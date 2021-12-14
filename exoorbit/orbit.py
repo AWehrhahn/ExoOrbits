@@ -1,11 +1,11 @@
 import numpy as np
-from scipy.optimize import fsolve, minimize_scalar, minimize
+from scipy.optimize import minimize
 from scipy.constants import G, c
 from astropy import constants as const
 from astropy import units as u
 from astropy.time import Time
 
-from .util import cache, hasCache, time_input
+from .util import time_input
 
 pi = np.pi
 
@@ -19,7 +19,7 @@ pi = np.pi
 # TODO: Empty cache when self.parameters change
 
 
-class Orbit(hasCache):
+class Orbit:
     def __init__(self, star, planet):
         """Calculates the orbit of an exoplanet
 
@@ -41,7 +41,7 @@ class Orbit(hasCache):
 
     @property
     def a(self):
-        return self.planet.semi_major_axis
+        return self.planet.sma
 
     @property
     def p(self):
@@ -49,15 +49,15 @@ class Orbit(hasCache):
 
     @property
     def e(self):
-        return self.planet.eccentricity
+        return self.planet.ecc
 
     @property
     def i(self):
-        return self.planet.inclination
+        return self.planet.inc
 
     @property
     def w(self):
-        return self.planet.argument_of_periastron
+        return self.planet.omega
 
     @property
     def t0(self):
@@ -260,19 +260,10 @@ class Orbit(hasCache):
             (self.projected_radius(Time(t, format="mjd")) - r).value
         )
         bounds = [bounds[0].mjd, bounds[1].mjd]
-        # res = minimize_scalar(
-        #     func, bounds=bounds, method="bounded", options={"xatol": 1e-16}
-        # )
         t0 = bounds[0] + (bounds[1] - bounds[0]) / 4
         res = minimize(func, [t0], bounds=[bounds], method="Powell")
         res = Time(res.x, format="mjd")
         return res
-
-        # plt.clf()
-        # x = np.linspace(bounds[0], bounds[1], 1000)
-        # plt.plot(x, func(x))
-        # plt.plot(res.x, func(res.x), "rD")
-        # plt.savefig("bla.png")
 
     def first_contact(self):
         """

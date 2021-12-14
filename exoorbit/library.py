@@ -2,7 +2,7 @@ from astropy import units as u
 from astropy import constants as c
 from astropy.time import Time
 
-from .bodies import Body, Star, Planet
+from .bodies import Star, Planet
 
 # Section 1: Solar System bodies
 # NOTE: inclination is set to 0 for Earth so that we get transits
@@ -12,7 +12,7 @@ Earth = Planet(
     radius=c.R_earth,
     distance=1 * u.AU,
     period=1 * u.year,
-    eccentricity=0.016,
+    ecc=0.016,
     name="Earth",
 )
 # Earth on a perfectly circular orbit
