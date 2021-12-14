@@ -13,8 +13,6 @@ from astropy.time import Time
 from astropy.units.quantity import Quantity
 from numpy import pi
 
-from exoorbit.util import time_input
-
 from .dataclasses_quantity import dataclass
 
 
