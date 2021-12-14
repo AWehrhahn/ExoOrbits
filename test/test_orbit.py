@@ -22,48 +22,48 @@ def t0(planet):
 def test_mean_anomaly(orbit, times, t0):
     m = orbit.mean_anomaly(times)
     assert isinstance(m, u.quantity.Quantity)
-    assert m.to("rad")
+    assert m.to("rad") is not None
     assert m.ndim == times.ndim
     assert m.size == times.size
 
     m = orbit.mean_anomaly(t0)
     assert isinstance(m, u.quantity.Quantity)
-    assert m.to("rad")
+    assert m.to("rad") is not None
     assert m == 0 * u.rad
 
 
 def test_true_anomaly(orbit, times, t0):
     f = orbit.true_anomaly(times)
     assert isinstance(f, u.quantity.Quantity)
-    assert f.to("rad")
+    assert f.to("rad") is not None
     assert f.ndim == times.ndim
     assert f.size == times.size
     assert np.all((f <= np.pi * u.rad) & (f >= -np.pi * u.rad))
 
     f = orbit.true_anomaly(t0)
     assert isinstance(f, u.quantity.Quantity)
-    assert f.to("rad")
+    assert f.to("rad") is not None
     # assert f == 0 # Close to 0?
 
 
 def test_eccentric_anomaly(orbit, times, t0):
     ea = orbit.eccentric_anomaly(times)
     assert isinstance(ea, u.quantity.Quantity)
-    assert ea.to("rad")
+    assert ea.to("rad") is not None
     assert ea.ndim == times.ndim
     assert ea.size == times.size
     assert np.all((ea <= np.pi * u.rad) & (ea >= -np.pi * u.rad))
 
     ea = orbit.eccentric_anomaly(t0)
     assert isinstance(ea, u.quantity.Quantity)
-    assert ea.to("rad")
+    assert ea.to("rad") is not None
     assert np.isclose(ea.to_value("rad"), 0)
 
 
 def test_distance(orbit, times, planet):
     d = orbit.distance(times)
     assert isinstance(d, u.quantity.Quantity)
-    assert d.to("m")
+    assert d.to("m") is not None
     assert d.ndim == times.ndim
     assert d.size == times.size
 
@@ -75,14 +75,14 @@ def test_distance(orbit, times, planet):
 def test_phase_angle(orbit, times, t0):
     pa = orbit.phase_angle(times)
     assert isinstance(pa, u.quantity.Quantity)
-    assert pa.to("rad")
+    assert pa.to("rad") is not None
     assert pa.ndim == times.ndim
     assert pa.size == times.size
     assert np.all((pa >= -np.pi * u.rad) & (pa <= np.pi * u.rad))
 
     pa = orbit.phase_angle(t0)
     assert isinstance(pa, u.quantity.Quantity)
-    assert pa.to("rad")
+    assert pa.to("rad") is not None
     assert pa.to_value("rad") == 0
 
 
@@ -91,7 +91,7 @@ def test_radius(orbit, times, t0):
     max_d = orbit.apoapsis_distance()
 
     assert isinstance(r, u.quantity.Quantity)
-    assert r.to(u.m)
+    assert r.to(u.m) is not None
     assert r.ndim == times.ndim
     assert r.size == times.size
     assert np.all((r >= 0 * u.m) & (r <= max_d))
@@ -99,7 +99,7 @@ def test_radius(orbit, times, t0):
     r = orbit.phase_angle(t0)
     b = orbit.impact_parameter()
     assert isinstance(r, u.quantity.Quantity)
-    assert r.to("deg")
+    assert r.to("deg") is not None
     assert np.isclose(r.to_value("rad"), b.to_value(1))
 
 
@@ -155,5 +155,5 @@ def test_impact_parameter(orbit, star):
     b = orbit.impact_parameter()
     r_s = star.radius
     assert isinstance(b, u.quantity.Quantity)
-    assert b.to(1)
+    assert b.to(1) is not None
     assert 0 <= b <= 1
