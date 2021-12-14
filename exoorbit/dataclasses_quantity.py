@@ -223,6 +223,16 @@ def dataclass(
             if isinstance(attr, units.UnitBase):
                 converter = attr
                 attr = Quantity
+            elif (
+                hasattr(attr, "__origin__")
+                and issubclass(attr.__origin__, Quantity)
+                and hasattr(attr, "__metadata__")
+                and len(attr.__metadata__) == 1
+                and isinstance(attr.__metadata__[0], units.UnitBase)
+            ):
+                # Its an annotated type
+                converter = attr.__metadata__[0]
+                attr = attr.__origin__
             elif issubclass(attr, Quantity):
                 converter = value.unit
             elif issubclass(attr, np.ndarray):
@@ -248,7 +258,11 @@ def dataclass(
 
         # Turn properties into fields for dataclass
         for name, attr in cls.__dict__.items():
-            if isinstance(attr, property) and name not in cls.__annotations__ and attr.fset is not None:
+            if (
+                isinstance(attr, property)
+                and name not in cls.__annotations__
+                and attr.fset is not None
+            ):
                 return_type = get_return_type(default_factory=attr.fget)
                 if return_type != MISSING:
                     cls.__annotations__[name] = return_type
