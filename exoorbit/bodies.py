@@ -166,10 +166,10 @@ class Planet(Body):
         return p0
 
     @u.quantity_input
-    def equilibrium_temperature(self, stellar_teff: u.K) -> u.K:
+    def equilibrium_temperature(self, stellar_teff: u.K, stellar_radius: u.km) -> u.K:
         """
         Calculate the equilibrium temperature of the planet based on the 
-        stellar radiation. Assuming no reflection.
+        stellar radiation. Assuming no reflection, i.e. Albedo = 0.
 
         Parameters
         ----------
@@ -181,8 +181,8 @@ class Planet(Body):
         equi_temp: u.K
             equilibrium temperature of the planet
         """
-        teff = ((pi * self.radius ** 2) / self.sma ** 2) ** 0.25 * stellar_teff
-        return teff
+        t_eq = stellar_teff * (stellar_radius / (2 * self.sma))**0.5
+        return t_eq
 
     @u.quantity_input
     def atm_scale_height(self, surface_temp: u.K) -> u.km:
