@@ -9,7 +9,6 @@ from copy import copy
 import sys
 import types
 import inspect
-import functools
 from typing import Callable, Any
 from dataclasses import (
     Field,
@@ -29,37 +28,17 @@ from dataclasses import (
     _FIELDS,
     _POST_INIT_NAME,
     _set_new_attribute,
-    _repr_fn as _repr_fn_orig,
+    _repr_fn,
     _tuple_str,
-    _cmp_fn as _cmp_fn_orig,
-    _frozen_get_del_attr as _frozen_get_del_attr_orig,
-    _hash_action as _hash_action_orig,
-    _init_fn as _init_fn_orig,
+    _cmp_fn,
+    _frozen_get_del_attr,
+    _hash_action,
+    _init_fn,
 )
-from astropy.units.core import UnitBase
 
 import numpy as np
 from astropy.units.quantity import Quantity
 from astropy import units
-
-# Fix the dataclass imports for older Python Versions
-import sys
-vi = sys.version_info
-if vi.major == 3 and vi.minor == 7 and vi.micro == 0:
-    _init_fn = lambda *args, globals=None, **kwargs: _init_fn_orig(*args[:4], **kwargs)
-    _repr_fn = lambda *args, globals=None, **kwargs: _repr_fn_orig(*args[:1], **kwargs)
-    _cmp_fn = lambda *args, globals=None, **kwargs: _cmp_fn_orig(*args[:4], **kwargs)
-    _frozen_get_del_attr = lambda *args, globals=None, **kwargs: _frozen_get_del_attr_orig(*args[:2], **kwargs)
-
-    _hash_action = {}
-    for k, v in _hash_action_orig.items():
-        _hash_action[k] = lambda *args, globals=None, k=k, **kwargs: _hash_action_orig[k](*args[:2], *kwargs)
-else:
-    _init_fn = _init_fn_orig
-    _repr_fn = _repr_fn_orig
-    _cmp_fn = _cmp_fn_orig
-    _frozen_get_del_attr = _frozen_get_del_attr_orig
-    _hash_action = _hash_action_orig
 
 __all__ = [
     "field_property",
