@@ -53,7 +53,7 @@ if vi.major == 3 and vi.minor == 7 and vi.micro == 0:
 
     _hash_action = {}
     for k, v in _hash_action_orig.items():
-        _hash_action[k] = lambda *args, globals=None, **kwargs, k=k: _hash_action_orig[k](*args[:2], *kwargs)
+        _hash_action[k] = lambda *args, globals=None, k=k, **kwargs: _hash_action_orig[k](*args[:2], *kwargs)
 else:
     _init_fn = _init_fn_orig
     _repr_fn = _repr_fn_orig
