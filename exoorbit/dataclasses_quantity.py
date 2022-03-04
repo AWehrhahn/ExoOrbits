@@ -46,7 +46,7 @@ from astropy import units
 import sys
 vi = sys.version_info
 if vi.major == 3 and vi.minor == 7 and vi.micro == 0:
-    _init_fn = lambda *args, globals=None, **kwargs: _init_fn_orig(*args, **kwargs)
+    _init_fn = lambda *args, globals=None, **kwargs: _init_fn_orig(*args[:4], **kwargs)
 else:
     _init_fn = _init_fn_orig
 
