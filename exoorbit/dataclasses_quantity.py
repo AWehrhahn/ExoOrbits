@@ -29,10 +29,10 @@ from dataclasses import (
     _FIELDS,
     _POST_INIT_NAME,
     _set_new_attribute,
-    _repr_fn,
+    _repr_fn as _repr_fn_orig,
     _tuple_str,
-    _cmp_fn,
-    _frozen_get_del_attr,
+    _cmp_fn as _cmp_fn_orig,
+    _frozen_get_del_attr as _frozen_get_del_attr_orig,
     _hash_action,
     _init_fn as _init_fn_orig,
 )
@@ -47,8 +47,14 @@ import sys
 vi = sys.version_info
 if vi.major == 3 and vi.minor == 7 and vi.micro == 0:
     _init_fn = lambda *args, globals=None, **kwargs: _init_fn_orig(*args[:4], **kwargs)
+    _repr_fn = lambda *args, globals=None, **kwargs: _repr_fn_orig(*args[:1], **kwargs)
+    _cmp_fn = lambda *args, globals=None, **kwargs: _cmp_fn_orig(*args[:4], **kwargs)
+    _frozen_get_del_attr = lambda *args, globals=None, **kwargs: _frozen_get_del_attr_orig(*args[:2], **kwargs)
 else:
     _init_fn = _init_fn_orig
+    _repr_fn = _repr_fn_orig
+    _cmp_fn = _cmp_fn_orig
+    _frozen_get_del_attr = _frozen_get_del_attr_orig
 
 __all__ = [
     "field_property",
