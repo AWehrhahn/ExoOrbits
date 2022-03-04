@@ -34,7 +34,7 @@ from dataclasses import (
     _cmp_fn,
     _frozen_get_del_attr,
     _hash_action,
-    _init_fn,
+    _init_fn as _init_fn_orig,
 )
 from astropy.units.core import UnitBase
 
@@ -42,6 +42,13 @@ import numpy as np
 from astropy.units.quantity import Quantity
 from astropy import units
 
+# Fix the dataclass imports for older Python Versions
+import sys
+vi = sys.version_info
+if vi.major == 3 and vi.minor == 7 and vi.micro == 0:
+    _init_fn = lambda *args, globals=None, **kwargs: _init_fn_orig(*args, **kwargs)
+else:
+    _init_fn = _init_fn_orig
 
 __all__ = [
     "field_property",
