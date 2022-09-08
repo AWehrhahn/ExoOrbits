@@ -7,18 +7,134 @@ from astropy import constants as const
 from astropy import units as u
 from astropy.time import Time
 
-from .util import time_input
+from numba import njit
 
-pi = np.pi
+from .util import time_input
 
 # based on http://sredfield.web.wesleyan.edu/jesse_tarnas_thesis_final.pdf
 # and the exoplanet handbook
 
-
 # TODO: Perturbations by other planets
 # TODO: relativistic effects?
-# TODO: Determine the speed of the cache, is it too slow?
-# TODO: Empty cache when self.parameters change
+
+mjup_per_msun = (u.M_jup / u.M_sun).to(u.one)
+day_per_year = (u.day / u.year).to(u.one)
+
+
+@njit(nogil=True)
+def _true_anomaly(t: np.ndarray, t0: float, p: float, e: float) -> np.ndarray:
+    root = np.sqrt((1 + e) / (1 - e))
+    ea = _eccentric_anomaly(t, t0, p, e)
+    f = 2 * np.arctan(root * np.tan(ea / 2))
+    return f
+
+
+@njit(nogil=True)
+def _mean_anomaly(t: np.ndarray, t0: float, p: float) -> np.ndarray:
+    m = 2 * np.pi * (t - t0) / p
+    m %= 2 * np.pi
+    return m
+
+
+@njit(nogil=True)
+def _eccentric_anomaly(t: np.ndarray, t0: float, p: float, e: float) -> np.ndarray:
+    m = _mean_anomaly(t, t0, p)
+
+    tolerance = 1e-8
+    e = np.zeros_like(m)
+    en = np.ones_like(m) * 10 * tolerance
+    for i in range(10):
+        e = en
+        en = m + e * np.sin(e)
+        if np.any(np.abs(en - e) > tolerance):
+            break
+
+    en = ((en + np.pi) % (2 * np.pi)) - np.pi
+    return en
+
+
+@njit(nogil=True)
+def _phase_angle(
+    t: np.ndarray, t0: float, p: float, e: float, i: float, w: float
+) -> np.ndarray:
+    # Determine whether the time is before or after transit
+    k = (t - t0) % p
+    k = k / p
+    k = np.where(k < 0.5, 1, -1)
+    # Calculate the angle
+    f = _true_anomaly(t, t0, p, e)
+    theta = np.arccos(np.sin(w + f) * np.sin(i))
+    theta *= k
+    return theta
+
+
+@njit(nogil=True)
+def _distance(t: np.ndarray, t0: float, a: float, p: float, e: float) -> np.ndarray:
+    ea = _eccentric_anomaly(t, t0, p, e)
+    d = a * (1 - e * np.cos(ea))
+    return d
+
+
+@njit(nogil=True)
+def _projected_radius(
+    t: np.ndarray, t0: float, a: float, p: float, e: float, i: float, w: float
+) -> np.ndarray:
+    theta = _phase_angle(t, t0, p, e, i, w)
+    d = _distance(t, t0, a, p, e)
+    r = np.abs(d * np.sin(theta))
+    return r
+
+
+@njit(nogil=True)
+def _stellar_surface_covered_by_planet(
+    t: np.ndarray,
+    t0: float,
+    a: float,
+    rpl: float,
+    rst: float,
+    p: float,
+    e: float,
+    i: float,
+    w: float,
+) -> np.ndarray:
+    d = _projected_radius(t, t0, a, p, e, i, w)
+    area = np.zeros_like(t)
+
+    # Use these to make it a bit more readable
+    R = rst
+    r = rpl
+    # Case 1: planet completely inside the disk
+    area[d + r <= R] = r ** 2 / R ** 2
+    # Case 2: planet completely outside the disk
+    area[d - r >= R] = 0
+    # Case 3: inbetween
+    select = (d + r > R) & (d - r < R)
+    dp = d[select]
+    area1 = r ** 2 * np.arccos((dp ** 2 + r ** 2 - R ** 2) / (2 * dp * r))
+    area2 = R ** 2 * np.arccos((dp ** 2 + R ** 2 - r ** 2) / (2 * dp * R))
+    area3 = 0.5 * np.sqrt((-dp + r + R) * (dp + r - R) * (dp - r + R) * (dp + r + R))
+    area[select] = (area1 + area2 - area3) / (np.pi * R ** 2)
+    return area
+
+
+@njit(nogil=True)
+def _radial_velocity_semiamplitude_planet(m_s, m_p, p, e, i):
+    # m_s in solar masses
+    # m_p in jupiter masses
+    # p in days
+    # return in m/s
+    m = m_s / mjup_per_msun * (m_s + m_p * mjup_per_msun) ** (-2 / 3)
+    b = np.sin(i) / np.sqrt(1 - e ** 2)
+    t = (p * day_per_year) ** (-1 / 3)
+    return 28.4329 * m * b * t
+
+
+@njit(nogil=True)
+def _radial_velocity_planet(t, t0, m_s, m_p, p, e, i, w):
+    K = _radial_velocity_semiamplitude_planet(m_s, m_p, p, e, i)
+    f = _true_anomaly(t, t0, p, e)
+    rv = K * (np.cos(w + f) + e * np.cos(w))
+    return rv
 
 
 class Orbit:
@@ -102,29 +218,24 @@ class Orbit:
 
     @time_input
     def mean_anomaly(self, t: Time) -> u.rad:
-        m = 2 * pi * (t - self.t0) / self.p
-        m = m * u.rad
+        m = _mean_anomaly(t.mjd, self.t0.mjd, self.p.to_value(u.day))
+        m = m << u.rad
         return m
 
     @time_input
     def true_anomaly(self, t: Time) -> u.rad:
-        root = np.sqrt((1 + self.e) / (1 - self.e))
-        ea = self.eccentric_anomaly(t)
-        f = 2 * np.arctan(root * np.tan(ea / 2))
+        f = _true_anomaly(
+            t.mjd, self.t0.mjd, self.p.to_value(u.day), self.e.to_value(u.one),
+        )
+        f = f << u.rad
         return f
 
     @time_input
     def eccentric_anomaly(self, t: Time) -> u.rad:
-        m = self.mean_anomaly(t)
-
-        tolerance = 1e-8 * m.unit
-        e = 0 * m.unit
-        en = 10 * tolerance
-        while np.any(np.abs(en - e) > tolerance):
-            e = en
-            en = m + self.e * np.sin(e) * m.unit
-
-        en = ((en + np.pi * u.rad) % (2 * np.pi * u.rad)) - np.pi * u.rad
+        en = _eccentric_anomaly(
+            t.mjd, self.t0.mjd, self.p.to_value(u.day), self.e.to_value(u.one)
+        )
+        en = en << u.rad
         return en
 
     @time_input
@@ -141,7 +252,15 @@ class Orbit:
         distance : float, array
             distance in km
         """
-        return self.a * (1 - self.e * np.cos(self.eccentric_anomaly(t)))
+        d = _distance(
+            t.mjd,
+            self.t0.mjd,
+            self.a.to_value(u.km),
+            self.p.to_value(u.day),
+            self.e.to_value(u.one),
+        )
+        d = d << u.km
+        return d
 
     @time_input
     def phase_angle(self, t: Time) -> u.rad:
@@ -160,15 +279,15 @@ class Orbit:
         phase_angle : float
             phase angle in radians
         """
-        # Determine whether the time is before or after transit
-        p = self.p.to_value(u.day)
-        k = (t - self.t0).jd % p
-        k = k / p
-        k = np.where(k < 0.5, 1, -1)
-        # Calculate the angle
-        f = self.true_anomaly(t)
-        theta = np.arccos(np.sin(self.w + f) * np.sin(self.i))
-        theta *= k
+        theta = _phase_angle(
+            t.mjd,
+            self.t0.mjd,
+            self.p.to_value(u.day),
+            self.e.to_value(u.one),
+            self.i.to_value(u.rad),
+            self.w.to_value(u.rad),
+        )
+        theta = theta << u.rad
         return theta
 
     @time_input
@@ -187,9 +306,16 @@ class Orbit:
         r : float, array
             distance in km
         """
-        theta = self.phase_angle(t)
-        d = self.distance(t)
-        r = np.abs(d * np.sin(theta))
+        r = _projected_radius(
+            t.mjd,
+            self.t0.mjd,
+            self.a.to_value(u.km),
+            self.p.to_value(u.day),
+            self.e.to_value(u.one),
+            self.i.to_value(u.rad),
+            self.w.to_value(u.rad),
+        )
+        r = r << u.km
         return r
 
     @time_input
@@ -236,28 +362,18 @@ class Orbit:
 
     @time_input
     def stellar_surface_covered_by_planet(self, t: Time) -> u.one:
-        d = self.projected_radius(t)
-        area = np.zeros(len(t)) << u.one
-
-        # Use these to make it a bit more readable
-        R = self.star.radius
-        r = self.planet.radius
-        # Case 1: planet completely inside the disk
-        area[d + r <= R] = r ** 2 / R ** 2
-        # Case 2: planet completely outside the disk
-        area[d - r >= R] = 0
-        # Case 3: inbetween
-        select = (d + r > R) & (d - r < R)
-        dp = d[select]
-        area1 = r ** 2 * np.arccos((dp ** 2 + r ** 2 - R ** 2) / (2 * dp * r))
-        area2 = R ** 2 * np.arccos((dp ** 2 + R ** 2 - r ** 2) / (2 * dp * R))
-        area3 = (
-            0.5
-            * np.sqrt((-dp + r + R) * (dp + r - R) * (dp - r + R) * (dp + r + R))
-            * u.rad
+        area = _stellar_surface_covered_by_planet(
+            t.mjd,
+            self.t0.mjd,
+            self.a.to_value(u.km),
+            self.r_p.to_value(u.km),
+            self.r_s.to_value(u.km),
+            self.p.to_value(u.day),
+            self.e.to_value(u.one),
+            self.i.to_value(u.rad),
+            self.w.to_value(u.rad),
         )
-        area[select] = (area1 + area2 - area3) / (np.pi * u.rad * R ** 2)
-
+        area = area << u.one
         return area
 
     def _find_contact(self, r: u.km, bounds: Tuple[float, float]) -> Time:
@@ -348,7 +464,7 @@ class Orbit:
             kappa1 = np.arccos((1 - k2 + z2) / (2 * z))
             kappa0 = np.arccos((k2 + z2 - 1) / (2 * k * z))
             root = 0.5 * np.sqrt(4 * z2 - (1 - k2 + z2) ** 2)
-            depth[mask] = 1 / pi * (k2 * kappa0 + kappa1 - root)
+            depth[mask] = 1 / np.pi * (k2 * kappa0 + kappa1 - root)
 
         return depth
 
@@ -385,7 +501,7 @@ class Orbit:
         """
         b = self.impact_parameter()
         alpha = self.r_s / self.a * np.sqrt((1 + self.k) ** 2 - b ** 2) / np.sin(self.i)
-        return self.p / pi * np.arcsin(alpha)
+        return self.p / np.pi * np.arcsin(alpha)
 
     @u.quantity_input
     def transit_time_full_circular(self) -> u.day:
@@ -404,7 +520,7 @@ class Orbit:
         """
         b = self.impact_parameter()
         alpha = self.r_s / self.a * np.sqrt((1 - self.k) ** 2 - b ** 2) / np.sin(self.i)
-        return self.p / pi * np.arcsin(alpha)
+        return self.p / np.pi * np.arcsin(alpha)
 
     def time_primary_transit(self) -> Time:
         """
@@ -479,9 +595,17 @@ class Orbit:
         rv : float
             radial velocity in m/s
         """
-        K = self.radial_velocity_semiamplitude_planet()
-        f = self.true_anomaly(t)
-        rv = K * (np.cos(self.w + f) + self.e * np.cos(self.w))
+        rv = _radial_velocity_planet(
+            t.mjd,
+            self.t0.mjd,
+            self.m_s.to_value(u.M_sun),
+            self.m_p.to_value(u.M_jup),
+            self.p.to_value(u.day),
+            self.e.to_value(u.one),
+            self.i.to_value(u.rad),
+            self.w.to_value(u.rad),
+        )
+        rv = rv << (u.m / u.s)
         return rv
 
     @time_input
@@ -526,7 +650,12 @@ class Orbit:
         K : float
             radial velocity semiamplitude in m/s
         """
-        m = self.m_s / u.M_jup * ((self.m_s + self.m_p) / u.M_sun) ** (-2 / 3)
-        b = np.sin(self.i) / np.sqrt(1 - self.e ** 2)
-        t = (self.p / u.year) ** (-1 / 3)
-        return 28.4329 * m * b * t * (u.m / u.s)
+        K = _radial_velocity_semiamplitude_planet(
+            self.m_s.to_value(u.M_sun),
+            self.m_p.to_value(u.M_jup),
+            self.p.to_value(u.day),
+            self.e.to_value(u.one),
+            self.i.to_value(u.rad),
+        )
+        K = K << (u.m / u.s)
+        return K
