@@ -3,11 +3,12 @@ from exoorbit.bodies import Planet, Star
 import numpy as np
 from scipy.optimize import minimize
 from scipy.constants import G, c
-from astropy import constants as const
 from astropy import units as u
 from astropy.time import Time
 
-from numba import njit
+import numba as nb
+from numba import njit, generated_jit
+
 
 from .util import time_input
 
@@ -36,14 +37,37 @@ def _mean_anomaly(t: np.ndarray, t0: float, p: float) -> np.ndarray:
     return m
 
 
-@njit(nogil=True)
+@generated_jit(nopython=True, cache=True)
 def _eccentric_anomaly(t: np.ndarray, t0: float, p: float, e: float) -> np.ndarray:
-    m = _mean_anomaly(t, t0, p)
+    if isinstance(t, nb.types.Float):
+        return _eccentric_anomaly_scalar
+    else:
+        return _eccentric_anomaly_array
 
+@njit(nogil=True)
+def _eccentric_anomaly_scalar(t: float, t0: float, p: float, e: float) -> float:
+    m = _mean_anomaly(t, t0, p)
+    tolerance = 1e-8
+    e = 0
+    en = 10 * tolerance
+    for _ in range(10):
+        e = en
+        en = m + e * np.sin(e)
+        if np.abs(en - e) > tolerance:
+            break
+    en = ((en + np.pi) % (2 * np.pi)) - np.pi
+    return en
+
+
+@njit(nogil=True)
+def _eccentric_anomaly_array(
+    t: np.ndarray, t0: float, p: float, e: float
+) -> np.ndarray:
+    m = _mean_anomaly(t, t0, p)
     tolerance = 1e-8
     e = np.zeros_like(m)
     en = np.ones_like(m) * 10 * tolerance
-    for i in range(10):
+    for _ in range(10):
         e = en
         en = m + e * np.sin(e)
         if np.any(np.abs(en - e) > tolerance):
@@ -53,14 +77,39 @@ def _eccentric_anomaly(t: np.ndarray, t0: float, p: float, e: float) -> np.ndarr
     return en
 
 
-@njit(nogil=True)
+@generated_jit(nopython=True)
 def _phase_angle(
+    t: np.ndarray, t0: float, p: float, e: float, i: float, w: float
+) -> np.ndarray:
+    if isinstance(t, nb.types.Float):
+        return _phase_angle_scalar
+    else:
+        return _phase_angle_array
+
+
+@njit(nogil=True)
+def _phase_angle_array(
     t: np.ndarray, t0: float, p: float, e: float, i: float, w: float
 ) -> np.ndarray:
     # Determine whether the time is before or after transit
     k = (t - t0) % p
     k = k / p
     k = np.where(k < 0.5, 1, -1)
+    # Calculate the angle
+    f = _true_anomaly(t, t0, p, e)
+    theta = np.arccos(np.sin(w + f) * np.sin(i))
+    theta *= k
+    return theta
+
+
+@njit(nogil=True)
+def _phase_angle_scalar(
+    t: float, t0: float, p: float, e: float, i: float, w: float
+) -> float:
+    # Determine whether the time is before or after transit
+    k = (t - t0) % p
+    k = k / p
+    k = 1 if k < 0.5 else -1
     # Calculate the angle
     f = _true_anomaly(t, t0, p, e)
     theta = np.arccos(np.sin(w + f) * np.sin(i))
@@ -204,7 +253,8 @@ class Orbit:
     @time_input
     def z(self, t: Time) -> u.one:
         """projected radius in units of the stellar disk"""
-        return self.projected_radius(t) / self.r_s
+        z = self.projected_radius(t) / self.r_s
+        return z.decompose()
 
     @u.quantity_input
     def periapsis_distance(self) -> u.km:
@@ -383,7 +433,7 @@ class Orbit:
         bounds = [bounds[0].mjd, bounds[1].mjd]
         t0 = bounds[0] + (bounds[1] - bounds[0]) / 4
         res = minimize(func, [t0], bounds=[bounds], method="Powell")
-        res = Time(res.x, format="mjd")
+        res = Time(res.x[0], format="mjd")
         return res
 
     def first_contact(self) -> Time:
@@ -461,8 +511,8 @@ class Orbit:
         if np.any(mask):
             z = z[mask]
             k2, z2 = k ** 2, z ** 2
-            kappa1 = np.arccos((1 - k2 + z2) / (2 * z))
-            kappa0 = np.arccos((k2 + z2 - 1) / (2 * k * z))
+            kappa1 = np.arccos((1 - k2 + z2) / (2 * z)).to_value(u.rad)
+            kappa0 = np.arccos((k2 + z2 - 1) / (2 * k * z)).to_value(u.rad)
             root = 0.5 * np.sqrt(4 * z2 - (1 - k2 + z2) ** 2)
             depth[mask] = 1 / np.pi * (k2 * kappa0 + kappa1 - root)
 

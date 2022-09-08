@@ -3,16 +3,20 @@ import matplotlib.pyplot as plt
 from astropy import constants as const
 from astropy import units as q
 
-from ExoOrbit import Orbit, Body
-from ExoOrbit.library import Sun, Earth, Earth_circular
+from exoorbit import Orbit, Body
+from exoorbit.library import Sun, Earth, Earth_circular
 
 if __name__ == "__main__":
     # Earth parameters
-    p = q.year.to("day")
 
     orbit = Orbit(Sun, Earth)
+    p = Earth.period.to_value("day")
+    t0 = Earth.time_of_transit
 
-    t = np.linspace(-p/2, p/2, 100000)
+    t = t0 + np.linspace(-p/2, p/2, 100000) * q.day
+
+    e = orbit.eccentric_anomaly(t0)
+    f = orbit.true_anomaly(t0)
 
     m = orbit.mean_anomaly(t)
     e = orbit.eccentric_anomaly(t)

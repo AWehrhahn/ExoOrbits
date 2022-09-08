@@ -12,7 +12,7 @@ Earth = Planet(
     radius=c.R_earth,
     sma=1 * u.AU,
     period=1 * u.year,
-    ecc=0.016,
+    ecc=0.016 * u.one,
     name="Earth",
 )
 # Earth on a perfectly circular orbit
