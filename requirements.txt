@@ -3,3 +3,4 @@ scipy
 astropy
 pytest
 pyyaml
+numba
