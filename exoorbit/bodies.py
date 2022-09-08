@@ -6,11 +6,12 @@ but rather the individual bodies
 Orbit calculations are performed in the orbit module
 """
 import astropy.units as u
-from astropy.constants import G, R
+from astropy.constants import G, R, sigma_sb
 from astropy.coordinates import SkyCoord
 from astropy.io.misc import yaml
 from astropy.time import Time
 from astropy.units.quantity import Quantity
+import numpy as np
 from numpy import pi
 
 from .dataclasses_quantity import dataclass
@@ -175,6 +176,8 @@ class Planet(Body):
         ----------
         stellar_teff : u.K
             effective temperature of the star
+        stellar_radius : u.km
+            radius of the star
 
         Returns
         -------
@@ -182,7 +185,36 @@ class Planet(Body):
             equilibrium temperature of the planet
         """
         t_eq = stellar_teff * (stellar_radius / (2 * self.sma))**0.5
+        # t_eq *= (1 - albedo)**0.25
         return t_eq
+
+    @u.quantity_input
+    def intrinsic_temperature(self, stellar_teff: u.K, stellar_radius: u.km) -> u.K:
+        """
+        Calculate the intrinisc temperature of the planet
+        based on from Thorngren, Gao, Fortney, 2019
+        https://iopscience.iop.org/article/10.3847/2041-8213/ab43d0/pdf
+
+        Parameters
+        ----------
+        stellar_teff : u.K
+            effective temperature of the star
+        stellar_radius : u.km
+            radius of the star
+
+        Returns
+        -------
+        t_int : u.K
+            intrinsic temperature of the planet
+        """
+        # intrinsic temperature depends on the equilibrium temperature
+        t_eq = self.equilibrium_temperature(stellar_teff, stellar_radius)
+        # incidence flux in Gerg/s/cm**2
+        f_inc = (4 * t_eq ** 4 * sigma_sb)
+        f_inc = f_inc.to_value(u.MW/u.m**2) # this is equivalent to Gerg/s/cm**2
+        # intrinisc temperature
+        t_int = 1.24 * t_eq * np.exp(-((np.log(f_inc) - 0.14) ** 2) / 2.96)
+        return t_int
 
     @u.quantity_input
     def atm_scale_height(self, surface_temp: u.K) -> u.km:
