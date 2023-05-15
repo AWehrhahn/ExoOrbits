@@ -4,3 +4,5 @@ astropy
 pytest
 pyyaml
 numba
+pandas
+astroquery
