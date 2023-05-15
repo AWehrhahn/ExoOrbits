@@ -79,7 +79,7 @@ class StellarDB(metaclass=Singleton):
             star = self.load_yaml(entry)
             name_list = star["id"] if not np.isscalar(star["id"]) else (star["id"],)
             for name in name_list:
-                name = name.replace(" ", "")
+                # name = name.replace(" ", "")
                 name_index[name] = entry
         return name_index
 
@@ -88,7 +88,7 @@ class StellarDB(metaclass=Singleton):
         load data for a given name
         if auto_get == True, then get info from the web if no file exists
         """
-        name = name.replace(" ", "")
+        # name = name.replace(" ", "")
         if name not in self.name_index:
             if auto_get:
                 print("Name %s not found, retrieving info online" % name)
@@ -233,7 +233,6 @@ class StellarDB_DataSource:
                     # Astropy Masked Quantity
                     value = value.unmasked
 
-                value = to_base_type(value)
 
                 if skip_nan and (
                     value is None or value != value or np.ma.is_masked(value)
@@ -241,6 +240,8 @@ class StellarDB_DataSource:
                     # Skip bad values
                     # value != value == nan
                     continue
+
+                value = to_base_type(value)
 
                 # Apply the correct units
                 if unit is None or unit == "str":
