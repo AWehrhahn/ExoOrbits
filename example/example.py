@@ -35,12 +35,12 @@ if __name__ == "__main__":
     print(t1)
     print(t4)
 
-    y = p
-    plt.plot(t, y)
+    y = p.to_value("rad")
+    plt.plot(t.mjd, y)
 
     # plt.hlines(r_s + r_p, 0, p, colors="r")
-    plt.vlines((t1, t2, t3, t4), np.min(y), np.max(y), colors="r")
-    plt.vlines(t0, np.min(y), np.max(y), colors="g")
+    plt.vlines((t1.mjd, t2.mjd, t3.mjd, t4.mjd), np.min(y), np.max(y), colors="r")
+    plt.vlines(t0.mjd, np.min(y), np.max(y), colors="g")
 
     plt.xlabel("Day")
     plt.ylabel("Radial velocity [m/s]")
