@@ -403,7 +403,10 @@ class Orbit:
         )
         bounds = [bounds[0].mjd, bounds[1].mjd]
         t0 = bounds[0] + (bounds[1] - bounds[0]) / 4
-        res = minimize(func, [t0], bounds=[bounds], method="Powell")
+        try:
+            res = minimize(func, [t0], bounds=[bounds], method="Powell")
+        except ValueError:
+            res = minimize(func, [t0], bounds=[bounds])
         res = Time(res.x[0], format="mjd")
         return res
 
