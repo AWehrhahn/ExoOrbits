@@ -3,12 +3,16 @@ import matplotlib.pyplot as plt
 from astropy import constants as const
 from astropy import units as q
 
-from exoorbit import Orbit, Body
+from exoorbit import Orbit, Body, Star, Planet
 from exoorbit.library import Sun, Earth, Earth_circular
 
 if __name__ == "__main__":
-    # Earth parameters
+    # load data from the database
+    star = Star("WASP-107")
+    planet = Planet("WASP-107 b")
+    orbit = Orbit("WASP-107", "b")
 
+    # Earth parameters
     orbit = Orbit(Sun, Earth)
     p = Earth.period.to_value("day")
     t0 = Earth.time_of_transit

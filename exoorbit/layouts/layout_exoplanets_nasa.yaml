@@ -1,0 +1,148 @@
+# All entries come with units already, so don't put them here again
+coordinates:
+  __module__: astropy.coordinates 
+  __class__: SkyCoord
+  ra: 
+    name: ra
+    unit: deg
+  dec: 
+    name: dec
+    unit: deg
+
+radius: 
+  name: st_rad
+  ref: st_rad_reflink
+  unc: [st_raderr1, st_raderr2]
+  unit: Rsun
+mass: 
+  name: st_mass
+  ref: st_mass_reflink
+  unc: [st_masserr1, st_masserr2]
+  unit: Msun
+radial_velocity: 
+  name: st_radv
+  unc: [st_radverr1, st_radverr2]
+  ref: st_radv_reflink
+  unit: km / s
+t_eff: 
+  name: st_teff
+  unc: [st_tefferr1, st_tefferr2]
+  ref: st_teff_reflink
+  unit: K
+logg: 
+  name: st_logg
+  ref: st_logg_reflink
+  unc: [st_loggerr1, st_loggerr2]
+  unit: ''
+velocity_rotation: 
+  name: st_vsin
+  unc: [st_vsinerr1, st_vsinerr2]
+  ref: st_vsin_reflink
+  unit: km / s 
+metallicity: 
+  name: st_metfe
+  ref: st_met_reflink
+  unc: [st_meterr1, st_meterr2]
+  unit: ''
+density : 
+  name: st_dens
+  unc: [st_denserr1, st_denserr2]
+  ref: st_dens_reflink
+  unit: g / cm3
+parallax: 
+  name: st_plx
+  unit: mas
+distance: 
+  name: st_dist
+  unc: [sy_disterr1, sy_disterr2]
+  ref: sy_dist_reflink
+  unit: pc
+spectral_type: 
+  name: st_spectype
+  unit: str
+  ref: st_spectype_reflink
+luminosity:
+  name: st_lum
+  unc: [st_lumerr1, st_lumerr2]
+  ref: st_lum_reflink
+  unit: dex(Lsun)
+age: 
+  name: st_age
+  unc: [st_ageerr1, st_ageerr2]
+  ref: st_age_reflink
+  unit: Gyr
+
+
+planets:
+  id: 
+    name: pl_name
+  density: 
+    name: pl_dens
+    unc: [pl_denserr1, pl_denserr2]
+    ref: pl_dens_reflink
+    unit: g / cm3
+  t_eff:
+    name: pl_eqt
+    ref: pl_eqt_reflink
+    unc: [pl_eqterr1, pl_eqterr2]
+    unit: K
+  transit_depth: 
+    name: pl_trandep
+    unc: [pl_trandeperr1, pl_trandeperr2]
+    ref: pl_trandep_reflink
+    unit: ''
+  transit_duration: 
+    name: pl_trandur
+    unc: [pl_trandurerr1, pl_trandurerr2]
+    ref: pl_trandur_reflink
+    unit: h
+  transit_epoch: 
+    name: pl_tranmid
+    unc: [pl_tranmiderr1, pl_tranmiderr2]
+    ref: pl_tranmid_reflink
+    unit: jd
+  radius: 
+    name: pl_radj
+    unc: [pl_radjerr1, pl_radjerr2]
+    ref: pl_radj_reflink
+    unit: Rjup
+  mass: 
+    name: pl_bmassj
+    unc: [pl_bmassjerr1, pl_bmassjerr2]
+    ref: pl_bmassj_reflink
+    unit: Mjup
+  semi_major_axis: 
+    name: pl_orbsmax
+    unc: [pl_orbsmaxerr1, pl_orbsmaxerr2]
+    ref: pl_orbsmax_reflink
+    unit: AU
+  inclination: 
+    name: pl_orbincl
+    unc: [pl_orbinclerr1, pl_orbinclerr2]
+    unit: deg
+  eccentricity: 
+    name: pl_orbeccen
+    unit: ''
+    unc: [pl_orbeccenerr1, pl_orbeccenerr2]
+    ref: pl_orbeccen_reflink
+    unit: ''
+  period: 
+    name: pl_orbper
+    unc: [pl_orbpererr1, pl_orbpererr2]
+    ref: pl_orbper_reflink
+    unit: day
+  argument_of_periastron: 
+    name: pl_orblper
+    unc: [pl_orblpererr1, pl_orblpererr2]
+    unit: deg
+  time_of_periastron: 
+    name: pl_orbtper
+    unc: [pl_orbtpererr1, pl_orbtpererr2]
+    ref: pl_orbtper_reflink
+    unit: jd
+  radial_velocity_amplitude:
+    name: pl_rvamp
+    unc: [pl_rvamperr1, pl_rvamperr2]
+    ref: pl_rvamp_reflink
+    unit: km / s
+

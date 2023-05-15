@@ -1,13 +1,12 @@
 from typing import Tuple
-from exoorbit.bodies import Planet, Star
+
 import numpy as np
-from scipy.optimize import minimize
-from scipy.constants import G, c
 from astropy import units as u
 from astropy.time import Time
-
-import numba as nb
+from exoorbit.bodies import Planet, Star
 from numba import njit
+from scipy.constants import G, c
+from scipy.optimize import minimize
 
 from .util import time_input
 
@@ -168,6 +167,13 @@ class Orbit:
         planet : Planet
             Orbiting body (planet) of the system
         """
+        # If the star and planets are only passed as strings
+        # Load them from the database
+        if not isinstance(star, Star):
+            star = Star(star)
+        if not isinstance(planet, Planet):
+            planet = Planet(f"{star.name} {planet}")
+
         self.star = star
         self.planet = planet
         self.star._orbit = self

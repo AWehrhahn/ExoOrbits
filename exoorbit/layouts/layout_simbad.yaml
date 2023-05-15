@@ -1,0 +1,71 @@
+coordinates:
+  __module__: astropy.coordinates 
+  __class__: SkyCoord
+  ra:
+    name: RA
+    unit: hourangle
+  dec: 
+    name: DEC
+    unit: deg
+radius: 
+  name: Diameter_diameter
+  unit: R_sun
+radial_velocity: 
+  name: RV_VALUE
+  unit: km / s
+t_eff: 
+  name: Fe_H_Teff
+  unit: K
+logg: 
+  name: Fe_H_log_g
+  unit: ''
+metallicity: 
+  name: Fe_H_Fe_H
+  unit: ''
+velocity_turbulence: 
+  name: ROT_Vsini
+  unit: km / s
+proper_motion:
+  ra: 
+    name: PMRA
+    unit: mas / year
+  dec: 
+    name: PMDEC
+    unit: mas / year
+parallax: 
+  name: PLX_VALUE
+  unit: mas
+spectral_type: 
+  name: SP_TYPE
+  unit: str
+object_type: 
+  name: OTYPE
+  unit: str
+flux:
+  U: 
+    name: FLUX_U
+    unit: mag
+  B: 
+    name: FLUX_B
+    unit: mag
+  V: 
+    name: FLUX_V
+    unit: mag
+  R: 
+    name: FLUX_R
+    unit: mag
+  I: 
+    name: FLUX_I
+    unit: mag
+  G: 
+    name: FLUX_G
+    unit: mag
+  J: 
+    name: FLUX_J
+    unit: mag
+  H: 
+    name: FLUX_H
+    unit: mag
+  K: 
+    name: FLUX_K
+    unit: mag

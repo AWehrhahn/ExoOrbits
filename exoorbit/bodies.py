@@ -6,15 +6,17 @@ but rather the individual bodies
 Orbit calculations are performed in the orbit module
 """
 import astropy.units as u
+import numpy as np
 from astropy.constants import G, R, sigma_sb
 from astropy.coordinates import SkyCoord
+from astropy.coordinates.distances import Distance
 from astropy.io.misc import yaml
 from astropy.time import Time
 from astropy.units.quantity import Quantity
-import numpy as np
 from numpy import pi
 
-from .dataclasses_quantity import dataclass
+from .database import StellarDB
+from .dataclasses_quantity import InitVar, dataclass
 
 
 @dataclass
@@ -48,6 +50,8 @@ class Body(DataclassIO):
     mass: Quantity[u.kg] = 0 * u.kg
     #:Quantity(km): radius of the disk
     radius: Quantity[u.km] = 0 * u.km
+    #:bool: whether to load additional data from the online database
+    useDatabase: InitVar[bool] = True
 
     @property
     @u.quantity_input
@@ -103,7 +107,39 @@ class Star(Body):
     distance: Quantity[u.pc] = 0 * u.pc
     #:Quantity(km/s): radial velocity of the star relative to the barycentric
     radial_velocity: Quantity[u.km / u.s] = 0 * u.km / u.s
+    #:dict: Planets of this star, just for reference
+    planets: dict = None
 
+    def __post_init__(self, useDatabase):
+        if self.planets is None:
+            self.planets = {}
+
+        if self.name != "" and useDatabase:
+            # Load Data from database
+            sdb = StellarDB()
+            data = sdb.load(self.name)
+
+            if "distance" in data:
+                distance = data["distance"]
+            elif "parallax" in data:
+                distance = Distance(parallax=data["parallax"])
+            else:
+                distance = None
+
+            # Convert names
+            # Stellar parameters
+            self.mass = data.get("mass", self.mass)
+            self.radius = data.get("radius", self.radius)
+            self.teff = data.get("t_eff", self.teff)
+            self.logg = data.get("logg", self.logg)
+            self.monh = data.get("metallicity", self.monh)
+            self.vmac = data.get("velocity_turbulence", self.vmac)
+            self.coordinates = data.get("coordinates", self.coordinates)
+            self.distance = distance if distance is not None else self.distance
+            self.radial_velocity = data.get("radial_velocity", self.radial_velocity)
+
+            for pname, p in data["planets"].items():
+                self.planets[pname] = Planet(f"{self.name} {pname}")
 
 @dataclass
 class Planet(Body):
@@ -121,6 +157,25 @@ class Planet(Body):
     time_of_transit: Time = Time(0, format="mjd")
     #:Quantity(day): duration of the transit, from first contact to fourth contact
     transit_duration: Quantity[u.day] = 0 * u.day
+
+    def __post_init__(self, useDatabase):
+        if self.name != "" and useDatabase:
+            # Load Data from database
+            sdb = StellarDB()
+            star, planet = self.name.rsplit(" ", 1)
+            data = sdb.load(star)
+            if planet in data["planets"]:
+                p = data["planets"][planet]
+                self.radius = p.get("radius", self.radius)
+                self.mass = p.get("mass", self.mass)
+                self.inc = p.get("inclination", self.inc)
+                self.sma = p.get("semi_major_axis", self.sma)
+                self.period = p.get("period", self.period)
+                self.ecc = p.get("eccentricity", self.ecc)
+                self.omega = p.get("periastron", self.omega)
+                self.time_of_transit = p.get("transit_epoch", self.time_of_transit)
+                self.transit_duration = p.get("transit_duration", self.transit_duration)
+
 
     @property
     def t0(self) -> Time:
@@ -169,7 +224,7 @@ class Planet(Body):
     @u.quantity_input
     def equilibrium_temperature(self, stellar_teff: u.K, stellar_radius: u.km) -> u.K:
         """
-        Calculate the equilibrium temperature of the planet based on the 
+        Calculate the equilibrium temperature of the planet based on the
         stellar radiation. Assuming no reflection, i.e. Albedo = 0.
 
         Parameters
@@ -184,7 +239,7 @@ class Planet(Body):
         equi_temp: u.K
             equilibrium temperature of the planet
         """
-        t_eq = stellar_teff * (stellar_radius / (2 * self.sma))**0.5
+        t_eq = stellar_teff * (stellar_radius / (2 * self.sma)) ** 0.5
         # t_eq *= (1 - albedo)**0.25
         return t_eq
 
@@ -210,8 +265,8 @@ class Planet(Body):
         # intrinsic temperature depends on the equilibrium temperature
         t_eq = self.equilibrium_temperature(stellar_teff, stellar_radius)
         # incidence flux in Gerg/s/cm**2
-        f_inc = (4 * t_eq ** 4 * sigma_sb)
-        f_inc = f_inc.to_value(u.MW/u.m**2) # this is equivalent to Gerg/s/cm**2
+        f_inc = 4 * t_eq ** 4 * sigma_sb
+        f_inc = f_inc.to_value(u.MW / u.m ** 2)  # this is equivalent to Gerg/s/cm**2
         # intrinisc temperature
         t_int = 1.24 * t_eq * np.exp(-((np.log(f_inc) - 0.14) ** 2) / 2.96)
         return t_int
@@ -242,8 +297,8 @@ class Planet(Body):
 
 if __name__ == "__main__":
     b = Body()
-    s = Star()
-    p = Planet(name="WASP107b")
+    s = Star("Trappist-1")
+    p = Planet(name="WASP107 b")
 
     p.save("test.yaml")
     p2 = Planet.load("test.yaml")

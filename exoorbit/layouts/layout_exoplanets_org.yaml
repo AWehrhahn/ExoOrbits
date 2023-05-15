@@ -1,0 +1,78 @@
+# All entries come with units already, so don't put them here again
+coordinates:
+  __module__: astropy.coordinates 
+  __class__: SkyCoord
+  ra: 
+    name: RA
+  dec: 
+    name: DEC
+
+radius: 
+  name: RSTAR
+mass: 
+  name: MSTAR
+radial_velocity : 
+  name: GAMMA
+t_eff: 
+  name: TEFF
+logg: 
+  name: LOGG
+velocity_rotation: 
+  name: VSINI
+  unit: km / s
+metallicity: 
+  name: FE
+  unit: ''
+density : 
+  name: RHOSTAR
+  unit: g / cm3
+parallax: 
+  name: PAR
+distance: 
+  name: DIST
+
+flux:
+  V: 
+    name: V
+  J: 
+    name: J
+  H: 
+    name: H
+  KS: 
+    name: KS
+
+planets:
+  id: 
+    name: COMP
+  density: 
+    name: DENSITY
+  transit_depth: 
+    name: DEPTH
+    unit: ''
+  transit_duration: 
+    name: T14
+  transit_epoch: 
+    name: TT
+    unit: jd
+  radius: 
+    name: R
+  logg: 
+    name: GRAVITY
+  mass: 
+    name: MASS
+  semi_major_axis: 
+    name: A
+  inclination: 
+    name: I
+  eccentricity: 
+    name: ECC
+    unit: ''
+  period: 
+    name: PER
+  argument_of_periastron: 
+    name: OM
+  time_of_periastron: 
+    name: T0
+    unit: jd
+  longitude_of_ascending_node: 
+    name: BIGOM
