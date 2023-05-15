@@ -1,9 +1,9 @@
-from functools import wraps, lru_cache
+from functools import lru_cache, wraps
 
-import numpy as np
 import astropy.units as u
-from astropy.time import Time
+import numpy as np
 from astropy.coordinates import SkyCoord
+from astropy.time import Time
 
 
 class hasCache:
